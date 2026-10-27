@@ -334,17 +334,50 @@ h3 {
     box-shadow: 0 0 0 3px rgba(212, 212, 216, 0.25);
 }
 
-.profile {
+.profile,
+.profile-button {
+    border: none;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 16px 4px 0;
+    padding: 12px 6px;
+    margin-top: 4px;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    border-radius: var(--squircle-sm);
     display: flex;
     align-items: center;
     gap: 10px;
+    background: transparent;
+    transition: background-color .15s ease, transform .15s ease;
+    color: inherit;
+    font: inherit;
+    box-sizing: border-box;
+}
+
+.profile-button:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.profile-button:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.profile-edit-icon {
+    margin-left: auto;
+    color: #71717a;
+    transition: color .15s ease, transform .15s ease;
+    flex-shrink: 0;
+}
+
+.profile-button:hover .profile-edit-icon {
+    color: #ffffff;
+    transform: scale(1.1);
 }
 
 .avatar {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: var(--squircle-sm);
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(12px);
@@ -354,28 +387,43 @@ h3 {
     place-items: center;
     color: #ffffff;
     font-weight: 700;
-    font-size: 12px;
+    font-size: 13px;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
 }
 
-.profile strong, .profile small {
+.avatar-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
     display: block;
 }
 
-.profile strong {
+.profile strong, .profile small,
+.profile-button strong, .profile-button small {
+    display: block;
+}
+
+.profile strong,
+.profile-button strong {
     font-size: 12px;
     color: #ffffff;
     letter-spacing: -.01em;
 }
 
-.profile small {
+.profile small,
+.profile-button small {
     font-size: 10px;
-    color: #71717a;
+    color: #a1a1aa;
     margin-top: 2px;
 }
 
 .profile-name {
     min-width: 0;
     overflow: hidden;
+    flex: 1;
 }
 
 .profile-name strong, .profile-name small {
@@ -1025,6 +1073,14 @@ textarea {
 }
 
 /* Password Eye Toggle - Absolutely Positioned Inside the Field */
+input::-ms-reveal,
+input::-ms-clear {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    pointer-events: none !important;
+}
+
 .password-field-wrap {
     position: relative !important;
     display: flex !important;
@@ -1071,6 +1127,77 @@ textarea {
 .eye-icon {
     display: block !important;
     stroke: currentColor !important;
+    width: 18px !important;
+    height: 18px !important;
+    pointer-events: none !important;
+}
+
+/* ==========================================================================
+   Adviser Profile Modal & Photo Controls
+   ========================================================================== */
+.profile-modal {
+    max-width: 440px !important;
+    width: 100% !important;
+}
+
+.profile-photo-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: var(--squircle-md);
+    margin-bottom: 16px;
+}
+
+.profile-photo-preview {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--squircle-sm);
+    background: #09090b;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.profile-photo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.profile-photo-controls {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.profile-photo-controls .photo-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 14px;
+}
+
+.profile-photo-tip {
+    font-size: 11px;
+    margin: 0;
+    line-height: 1.4;
+    color: #71717a;
 }
 
 /* ==========================================================================

@@ -32,16 +32,64 @@
         notice.timer = window.setTimeout(() => { node.hidden = true; }, 6000);
     }
 
-    function showAuthenticated(authenticated, adviser = '', role = 'admin') {
+    const EYE_OPEN_SVG = '<svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+    const EYE_CLOSED_SVG = '<svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+
+    function getStoredTeacherProfile() {
+        try {
+            return JSON.parse(localStorage.getItem('qrcam_teacher_profile') || '{}');
+        } catch {
+            return {};
+        }
+    }
+
+    function saveStoredTeacherProfile(profile) {
+        try {
+            localStorage.setItem('qrcam_teacher_profile', JSON.stringify(profile));
+        } catch {
+            // ignore
+        }
+    }
+
+    function updateAdviserProfileUI(profile) {
+        if (!profile) return;
+        const name = profile.name || 'Adviser';
+        const section = profile.section || '';
+        const photo = profile.photo || '';
+
+        const nameEl = $('#adviser-name');
+        if (nameEl) nameEl.textContent = name;
+
+        const roleTextEl = $('#adviser-section-text');
+        if (roleTextEl) {
+            roleTextEl.textContent = section ? `Section: ${section}` : (state.role === 'admin' ? 'Administrator' : 'Teacher');
+        }
+
+        const initialsEl = $('#adviser-avatar-initials');
+        const imgEl = $('#adviser-avatar-img');
+        if (photo && imgEl && initialsEl) {
+            imgEl.src = photo;
+            imgEl.hidden = false;
+            initialsEl.hidden = true;
+        } else if (initialsEl && imgEl) {
+            initialsEl.textContent = initials(name);
+            initialsEl.hidden = false;
+            imgEl.hidden = true;
+        }
+    }
+
+    function showAuthenticated(authenticated, adviser = '', role = 'admin', section = '') {
         $('#login-view').hidden = authenticated;
         $('#app-view').hidden = !authenticated;
         state.role = role;
         if (authenticated) {
-            $('#adviser-name').textContent = adviser || 'Adviser';
-            const roleEl = $('#adviser-role');
-            if (roleEl) roleEl.textContent = role === 'admin' ? 'Administrator' : 'Teacher';
-            const avatarEl = $('#adviser-avatar');
-            if (avatarEl) avatarEl.textContent = initials(adviser || 'A');
+            const stored = getStoredTeacherProfile();
+            const profile = {
+                name: stored.name || adviser || 'Adviser',
+                section: stored.section || section || '',
+                photo: stored.photo || '',
+            };
+            updateAdviserProfileUI(profile);
             const teacherMgmt = $('#teacher-management');
             if (teacherMgmt) teacherMgmt.hidden = role !== 'admin';
             const myAccount = $('#my-account-panel');
@@ -101,12 +149,7 @@
             input.type = isPassword ? 'text' : 'password';
             button.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
             button.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
-            const showIcon = button.querySelector('.eye-show');
-            const hideIcon = button.querySelector('.eye-hide');
-            if (showIcon && hideIcon) {
-                showIcon.hidden = isPassword;
-                hideIcon.hidden = !isPassword;
-            }
+            button.innerHTML = isPassword ? EYE_CLOSED_SVG : EYE_OPEN_SVG;
         });
     }
 
@@ -123,12 +166,154 @@
             button.setAttribute('aria-label', 'Show password');
             button.setAttribute('title', 'Show password');
             button.setAttribute('tabindex', '-1');
-            button.innerHTML = `
-                <svg class="eye-icon eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                <svg class="eye-icon eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-            `;
+            button.innerHTML = EYE_OPEN_SVG;
             wrap.appendChild(button);
         });
+    }
+
+    function initAdviserProfile() {
+        const profileBtn = $('#adviser-profile-btn');
+        const dialog = $('#adviser-profile-dialog');
+        const form = $('#adviser-profile-form');
+        const nameInput = $('#profile-name-input');
+        const sectionInput = $('#profile-section-input');
+        const photoInput = $('#profile-photo-input');
+        const removePhotoBtn = $('#profile-photo-remove');
+        const previewDisplay = $('#profile-photo-display');
+        const previewInitials = $('#profile-photo-initials');
+        const statusEl = $('#profile-save-status');
+
+        if (!profileBtn || !dialog || !form) return;
+
+        let pendingPhoto = null;
+
+        function updatePreview(photo, name) {
+            if (photo) {
+                previewDisplay.src = photo;
+                previewDisplay.hidden = false;
+                previewInitials.hidden = true;
+                if (removePhotoBtn) removePhotoBtn.hidden = false;
+            } else {
+                previewDisplay.src = '';
+                previewDisplay.hidden = true;
+                previewInitials.textContent = initials(name || 'A');
+                previewInitials.hidden = false;
+                if (removePhotoBtn) removePhotoBtn.hidden = true;
+            }
+        }
+
+        profileBtn.addEventListener('click', () => {
+            const stored = getStoredTeacherProfile();
+            const currentName = stored.name || $('#adviser-name')?.textContent || '';
+            const currentSection = stored.section || (state.students[0]?.class_section) || '';
+            const currentPhoto = stored.photo || '';
+
+            if (nameInput) nameInput.value = currentName;
+            if (sectionInput) sectionInput.value = currentSection;
+            pendingPhoto = currentPhoto;
+            updatePreview(currentPhoto, currentName);
+            if (statusEl) {
+                statusEl.textContent = '';
+                statusEl.className = 'settings-status';
+            }
+            dialog.showModal();
+        });
+
+        photoInput?.addEventListener('change', () => {
+            const file = photoInput.files?.[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                if (statusEl) {
+                    statusEl.textContent = 'Image must be under 5 MB.';
+                    statusEl.className = 'settings-status error-text';
+                }
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxDim = 320;
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    pendingPhoto = canvas.toDataURL('image/jpeg', 0.85);
+                    updatePreview(pendingPhoto, nameInput?.value || 'A');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        removePhotoBtn?.addEventListener('click', () => {
+            pendingPhoto = '';
+            if (photoInput) photoInput.value = '';
+            updatePreview('', nameInput?.value || 'A');
+        });
+
+        nameInput?.addEventListener('input', () => {
+            if (!pendingPhoto) {
+                previewInitials.textContent = initials(nameInput.value || 'A');
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const teacherName = nameInput.value.trim();
+            const teachingSection = sectionInput.value.trim();
+            if (!teacherName) return;
+
+            const profile = {
+                name: teacherName,
+                section: teachingSection,
+                photo: pendingPhoto || '',
+            };
+            saveStoredTeacherProfile(profile);
+            updateAdviserProfileUI(profile);
+
+            const settingsAdviser = $('input[name="adviser"]');
+            const settingsSection = $('input[name="section"]');
+            if (settingsAdviser) settingsAdviser.value = teacherName;
+            if (settingsSection && teachingSection) settingsSection.value = teachingSection;
+
+            try {
+                await api('set_profile', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        teacher_name: teacherName,
+                        teaching_section: teachingSection,
+                    }),
+                });
+            } catch {
+                // local save still succeeded
+            }
+
+            notice('Adviser profile updated successfully.');
+            dialog.close();
+        });
+    }
+
+    function isSummaryStudent(student) {
+        if (!student) return false;
+        const name = String(student.full_name || '').toUpperCase().trim();
+        return name.includes('TOTAL MALE') ||
+               name.includes('TOTAL FEMALE') ||
+               name.includes('COMBINED') ||
+               name.startsWith('<===') ||
+               name.startsWith('<---');
     }
 
     async function init() {
@@ -137,10 +322,11 @@
         initPasswordToggles();
         ensurePasswordToggles();
         initSettings();
+        initAdviserProfile();
         try {
             const session = await api('bootstrap');
             state.csrf = session.csrf;
-            showAuthenticated(session.authenticated, session.adviser, session.role || 'admin');
+            showAuthenticated(session.authenticated, session.adviser, session.role || 'admin', session.section || '');
         } catch (error) {
             $('#login-view').hidden = false;
             $('#login-error').textContent = error.message;
@@ -152,9 +338,10 @@
         try {
             const data = await api('dashboard');
             state.dashboard = data;
-            state.students = data.students;
+            const realStudents = (data.students || []).filter((s) => !isSummaryStudent(s));
+            state.students = realStudents;
             renderDashboard(data);
-            if (!$('#students-screen').hidden) renderStudents(data.students);
+            if (!$('#students-screen').hidden) renderStudents(realStudents);
             $('#header-date').textContent = new Date(`${data.date}T00:00:00`).toLocaleDateString(undefined, {
                 weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
             });
@@ -164,18 +351,52 @@
     }
 
     function renderDashboard(data) {
-        $('#total-count').textContent = data.total;
-        $('#present-count').textContent = data.present;
-        $('#absent-count').textContent = data.absent;
-        if (data.maleCount !== undefined && $('#male-count')) $('#male-count').textContent = data.maleCount;
-        if (data.femaleCount !== undefined && $('#female-count')) $('#female-count').textContent = data.femaleCount;
-        if (data.unknownGenderCount !== undefined && $('#unknown-gender-count')) $('#unknown-gender-count').textContent = data.unknownGenderCount;
-        const presentRate = data.total ? Math.round(data.present / data.total * 100) : 0;
-        const absentRate = data.total ? Math.round(data.absent / data.total * 100) : 0;
+        const rawStudents = data.students || [];
+        let maleCount = data.maleCount;
+        let femaleCount = data.femaleCount;
+        let combinedCount = data.combinedCount ?? data.total;
+
+        for (const s of rawStudents) {
+            const name = String(s.full_name || '').toUpperCase().trim();
+            if (name.includes('TOTAL MALE')) {
+                const n = parseInt(String(s.student_no).replace(/\D/g, ''), 10);
+                if (!isNaN(n) && n > 0) maleCount = n;
+            } else if (name.includes('TOTAL FEMALE')) {
+                const n = parseInt(String(s.student_no).replace(/\D/g, ''), 10);
+                if (!isNaN(n) && n > 0) femaleCount = n;
+            } else if (name.includes('COMBINED')) {
+                const n = parseInt(String(s.student_no).replace(/\D/g, ''), 10);
+                if (!isNaN(n) && n > 0) combinedCount = n;
+            }
+        }
+
+        const realStudents = rawStudents.filter((s) => !isSummaryStudent(s));
+        if (combinedCount === undefined || combinedCount === 0) {
+            combinedCount = realStudents.length;
+        }
+        if (maleCount === undefined) {
+            maleCount = realStudents.filter((s) => s.gender === 'male').length;
+        }
+        if (femaleCount === undefined) {
+            femaleCount = realStudents.filter((s) => s.gender === 'female').length;
+        }
+
+        const present = data.present || 0;
+        const absent = data.absent !== undefined ? data.absent : Math.max(0, combinedCount - present);
+
+        $('#total-count').textContent = combinedCount;
+        $('#present-count').textContent = present;
+        $('#absent-count').textContent = absent;
+        if ($('#male-count')) $('#male-count').textContent = maleCount;
+        if ($('#female-count')) $('#female-count').textContent = femaleCount;
+
+        const presentRate = combinedCount ? Math.round(present / combinedCount * 100) : 0;
+        const absentRate = combinedCount ? Math.round(absent / combinedCount * 100) : 0;
         $('#present-percent').textContent = `${presentRate}% of students`;
         $('#absent-percent').textContent = `${absentRate}% of students`;
-        const students = Object.fromEntries(data.students.map((student) => [student.id, student]));
-        $('#audit-rows').innerHTML = data.auditLogs.length ? data.auditLogs.map((log) => {
+
+        const students = Object.fromEntries(realStudents.map((student) => [student.id, student]));
+        $('#audit-rows').innerHTML = data.auditLogs && data.auditLogs.length ? data.auditLogs.map((log) => {
             const before = log.before_data || null;
             const after = log.after_data || {};
             const student = students[after.student_id];
@@ -189,7 +410,8 @@
             const stamp = log.created_at ? new Date(String(log.created_at).replace(' ', 'T')).toLocaleString() : '';
             return `<tr><td>${esc(stamp)}</td><td>${esc(log.actor)}</td><td>${change}</td></tr>`;
         }).join('') : '<tr><td colspan="3" class="empty">No manual changes recorded.</td></tr>';
-        const feed = data.attendance.slice().sort((a, b) => String(b.attended_at).localeCompare(String(a.attended_at)));
+
+        const feed = (data.attendance || []).slice().sort((a, b) => String(b.attended_at).localeCompare(String(a.attended_at)));
         $('#feed-rows').innerHTML = feed.length ? feed.map((entry) => {
             const student = students[entry.student_id];
             if (!student) return '';
@@ -203,16 +425,17 @@
     }
 
     function renderStudents(students) {
-        state.students = students;
-        $('#roster-count').textContent = `${students.length} ${students.length === 1 ? 'student' : 'students'}`;
+        const realStudents = (students || []).filter((s) => !isSummaryStudent(s));
+        state.students = realStudents;
+        $('#roster-count').textContent = `${realStudents.length} ${realStudents.length === 1 ? 'student' : 'students'}`;
         const query = $('#student-search').value.trim().toLowerCase();
-        const visible = students.filter((student) => `${student.full_name} ${student.student_no} ${student.class_section}`.toLowerCase().includes(query));
+        const visible = realStudents.filter((student) => `${student.full_name} ${student.student_no} ${student.class_section}`.toLowerCase().includes(query));
         $('#student-rows').innerHTML = visible.length ? visible.map((student) => `<tr>
             <td><div class="student-cell"><span class="student-avatar">${esc(initials(student.full_name))}</span><strong>${esc(student.full_name)}</strong></div></td>
             <td>${esc(student.student_no)}</td><td>${esc(student.class_section || '—')}</td>
             <td>${esc(String(student.created_at || '').slice(0, 10) || '—')}</td>
             <td><button class="text-button show-qr" data-student="${esc(student.id)}">View QR</button><button class="text-button adjust-attendance" data-student="${esc(student.id)}">Adjust</button></td>
-        </tr>`).join('') : `<tr><td colspan="5" class="empty">${students.length ? 'No matching students.' : 'No students enrolled yet. Import a CSV roster to get started.'}</td></tr>`;
+        </tr>`).join('') : `<tr><td colspan="5" class="empty">${realStudents.length ? 'No matching students.' : 'No students enrolled yet. Import a CSV roster to get started.'}</td></tr>`;
     }
 
     function setScreen(name) {
@@ -518,7 +741,7 @@
             });
             state.csrf = result.csrf;
             loginForm.reset();
-            showAuthenticated(true, result.adviser || form.get('username'), result.role || 'admin');
+            showAuthenticated(true, result.adviser || form.get('username'), result.role || 'admin', result.section || '');
         } catch (error) {
             $('#login-error').textContent = error.message;
         }

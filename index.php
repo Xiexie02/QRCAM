@@ -9,10 +9,10 @@ declare(strict_types=1);
     <meta name="theme-color" content="#09090b">
     <title>QRCAMv2 — Attendance</title>
     <link rel="icon" type="image/png" href="assets/logo.png">
-    <link rel="stylesheet" href="styles.css?v=excel_view_v2">
+    <link rel="stylesheet" href="styles.css?v=qrcam_adviser_v1">
     <script defer src="assets/qrcode-browser.js"></script>
     <script defer src="assets/html5-qrcode.min.js"></script>
-    <script defer src="app.js?v=excel_view_v2"></script>
+    <script defer src="app.js?v=qrcam_adviser_v1"></script>
 </head>
 <body>
     <main id="login-view" class="login-wrap" hidden>
@@ -36,8 +36,7 @@ declare(strict_types=1);
                     <div class="password-field-wrap">
                         <input name="password" type="password" autocomplete="current-password" required>
                         <button type="button" class="password-toggle-btn" aria-label="Show password" title="Show password" tabindex="-1">
-                            <svg class="eye-icon eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            <svg class="eye-icon eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                            <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         </button>
                     </div>
                 </label>
@@ -60,7 +59,14 @@ declare(strict_types=1);
             </nav>
             <div class="side-bottom">
                 <div class="connection" id="connection-status" role="status"><span class="live-dot"></span><span id="connection-label">Checking connection…</span></div>
-                <div class="profile"><div class="avatar" id="adviser-avatar">A</div><div class="profile-name"><strong id="adviser-name">Adviser</strong><small id="adviser-role">Administrator</small></div></div>
+                <button id="adviser-profile-btn" class="profile profile-button" type="button" aria-haspopup="dialog" aria-label="Open adviser profile" title="Open adviser profile">
+                    <div class="avatar" id="adviser-avatar"><span id="adviser-avatar-initials">A</span><img id="adviser-avatar-img" class="avatar-photo" alt="Adviser photo" hidden></div>
+                    <div class="profile-name">
+                        <strong id="adviser-name">Adviser</strong>
+                        <small id="adviser-role"><span id="adviser-section-text">Section: Compassion</span></small>
+                    </div>
+                    <svg class="profile-edit-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
             </div>
         </aside>
 
@@ -68,18 +74,18 @@ declare(strict_types=1);
             <header class="topbar">
                 <button id="menu-toggle" class="icon-button menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="primary-navigation">☰</button>
                 <div><p class="eyebrow">CLASSROOM CONSOLE</p><h1 id="page-title">Overview</h1></div>
-                <div class="topbar-actions"><span class="topbar-date"><span id="header-date"></span></span><button id="theme-toggle" class="button secondary theme-toggle" type="button" aria-label="Switch to dark mode">Dark mode</button><button id="refresh-button" class="button secondary" type="button" aria-label="Refresh dashboard">Refresh</button></div>
+                <div class="topbar-actions"><span class="topbar-date"><span id="header-date"></span></span></div>
             </header>
             <div id="notice" class="notice" role="status" hidden></div>
 
             <section id="dashboard-screen" class="screen">
                 <div class="welcome-row"><div><h2>Today's overview</h2><p class="muted">Attendance and enrolled learner totals.</p></div><button id="open-scanner" class="button primary"><span>▣</span> Scan QR code</button></div>
                 <div class="stats-grid">
-                    <article class="stat-card"><div class="stat-top"><span>Overall students</span><span class="stat-icon neutral">♙</span></div><strong id="total-count">0</strong><small><span id="unknown-gender-count">0</span> gender unspecified</small></article>
-                    <article class="stat-card"><div class="stat-top"><span>Male students</span><span class="stat-icon blue">♂</span></div><strong id="male-count">0</strong><small>Recorded as male</small></article>
-                    <article class="stat-card"><div class="stat-top"><span>Female students</span><span class="stat-icon rose">♀</span></div><strong id="female-count">0</strong><small>Recorded as female</small></article>
-                    <article class="stat-card"><div class="stat-top"><span>Present</span><span class="stat-icon green">✓</span></div><strong id="present-count">0</strong><small id="present-percent">0% of students</small></article>
-                    <article class="stat-card"><div class="stat-top"><span>Absent</span><span class="stat-icon amber">—</span></div><strong id="absent-count">0</strong><small id="absent-percent">0% of students</small></article>
+                    <article class="stat-card"><div class="stat-top"><span>Combined students</span><span class="stat-icon neutral" title="Combined"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></div><strong id="total-count">0</strong><small id="combined-subtext">Total enrolled</small></article>
+                    <article class="stat-card"><div class="stat-top"><span>Total Male</span><span class="stat-icon blue" title="Male"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="14" r="5"></circle><line x1="19" y1="5" x2="13.6" y2="10.4"></line><line x1="19" y1="5" x2="14" y2="5"></line><line x1="19" y1="5" x2="19" y2="10"></line></svg></span></div><strong id="male-count">0</strong><small>Male learners</small></article>
+                    <article class="stat-card"><div class="stat-top"><span>Total Female</span><span class="stat-icon rose" title="Female"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"></circle><line x1="12" y1="14" x2="12" y2="21"></line><line x1="9" y1="18" x2="15" y2="18"></line></svg></span></div><strong id="female-count">0</strong><small>Female learners</small></article>
+                    <article class="stat-card"><div class="stat-top"><span>Present</span><span class="stat-icon green" title="Present"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span></div><strong id="present-count">0</strong><small id="present-percent">0% of students</small></article>
+                    <article class="stat-card"><div class="stat-top"><span>Absent</span><span class="stat-icon amber" title="Absent"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg></span></div><strong id="absent-count">0</strong><small id="absent-percent">0% of students</small></article>
                 </div>
                 <div class="content-grid">
                     <article class="panel attendance-panel">
@@ -153,8 +159,7 @@ declare(strict_types=1);
                             <div class="password-field-wrap">
                                 <input name="password" type="password" minlength="12" maxlength="1024" autocomplete="new-password" required>
                                 <button type="button" class="password-toggle-btn" aria-label="Show password" title="Show password" tabindex="-1">
-                                    <svg class="eye-icon eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                    <svg class="eye-icon eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                    <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                 </button>
                             </div>
                         </label>
@@ -173,8 +178,7 @@ declare(strict_types=1);
                             <div class="password-field-wrap">
                                 <input name="current_password" type="password" autocomplete="current-password" required>
                                 <button type="button" class="password-toggle-btn" aria-label="Show password" title="Show password" tabindex="-1">
-                                    <svg class="eye-icon eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                    <svg class="eye-icon eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                    <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                 </button>
                             </div>
                         </label>
@@ -182,8 +186,7 @@ declare(strict_types=1);
                             <div class="password-field-wrap">
                                 <input name="new_password" type="password" minlength="12" maxlength="1024" autocomplete="new-password">
                                 <button type="button" class="password-toggle-btn" aria-label="Show password" title="Show password" tabindex="-1">
-                                    <svg class="eye-icon eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                    <svg class="eye-icon eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                    <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                 </button>
                             </div>
                         </label>
@@ -289,14 +292,53 @@ declare(strict_types=1);
                 <div class="password-field-wrap">
                     <input name="password" type="password" minlength="12" maxlength="1024" autocomplete="new-password">
                     <button type="button" class="password-toggle-btn" aria-label="Show password" title="Show password" tabindex="-1">
-                        <svg class="eye-icon eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        <svg class="eye-icon eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </button>
                 </div>
             </label>
             <label class="checkbox-label"><input name="is_active" type="checkbox"> Account is active</label>
             <div class="modal-actions"><button class="button primary" type="submit">Save teacher</button><button class="button secondary close-dialog" type="button">Cancel</button></div>
             <p id="teacher-edit-error" class="error-text" role="alert"></p>
+        </form>
+    </dialog>
+
+    <dialog id="adviser-profile-dialog" class="modal profile-modal">
+        <div class="modal-heading">
+            <div>
+                <p class="eyebrow">TEACHER PROFILE</p>
+                <h2>Adviser Profile</h2>
+            </div>
+            <button class="icon-button close-dialog" aria-label="Close">×</button>
+        </div>
+        <form id="adviser-profile-form">
+            <div class="profile-photo-container">
+                <div class="profile-photo-preview" id="profile-photo-preview">
+                    <span id="profile-photo-initials">A</span>
+                    <img id="profile-photo-display" src="" alt="Teacher display photo" hidden>
+                </div>
+                <div class="profile-photo-controls">
+                    <label class="button secondary small photo-btn">
+                        <span>Upload photo</span>
+                        <input type="file" id="profile-photo-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+                    </label>
+                    <button type="button" id="profile-photo-remove" class="button secondary small" hidden>Remove photo</button>
+                    <p class="muted profile-photo-tip">Upload a display photo for your teacher profile.</p>
+                </div>
+            </div>
+
+            <label>Teacher's Name
+                <input name="teacher_name" id="profile-name-input" maxlength="160" autocomplete="name" placeholder="Enter teacher's full name" required>
+            </label>
+
+            <label>Currently Handling / Teaching Section
+                <input name="teaching_section" id="profile-section-input" maxlength="120" placeholder="e.g. COMPASSION" required>
+            </label>
+
+            <div class="modal-actions">
+                <button class="button primary" type="submit">Save Profile</button>
+                <button class="button secondary close-dialog" type="button">Cancel</button>
+            </div>
+            <p id="profile-save-status" class="settings-status" role="status" aria-live="polite"></p>
         </form>
     </dialog>
 </body>

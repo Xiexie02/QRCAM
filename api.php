@@ -89,6 +89,77 @@ function new_id(): string
         substr($hex, 12, 4) . '-' . substr($hex, 16, 4) . '-' . substr($hex, 20);
 }
 
+function is_summary_student(array $student): bool
+{
+    $name = strtoupper(trim((string)($student['full_name'] ?? '')));
+    return preg_match('/(?:<[=-]+\s*)?(?:TOTAL\s+(?:MALE|FEMALE)|COMBINED)/i', $name) === 1
+        || str_contains($name, 'TOTAL MALE')
+        || str_contains($name, 'TOTAL FEMALE')
+        || str_contains($name, 'COMBINED')
+        || str_starts_with($name, '<===')
+        || str_starts_with($name, '<---');
+}
+
+function extract_student_metrics(array $allStudents): array
+{
+    $realStudents = [];
+    $maleCount = 0;
+    $femaleCount = 0;
+    $combinedCount = 0;
+    $foundSummaryMale = false;
+    $foundSummaryFemale = false;
+    $foundSummaryCombined = false;
+
+    foreach ($allStudents as $student) {
+        $name = strtoupper(trim((string)($student['full_name'] ?? '')));
+        if (preg_match('/(?:<[=-]+\s*)?TOTAL\s+MALE/i', $name) || str_contains($name, 'TOTAL MALE')) {
+            $num = (int)preg_replace('/\D/', '', (string)($student['student_no'] ?? ''));
+            if ($num > 0) {
+                $maleCount = $num;
+                $foundSummaryMale = true;
+            }
+            continue;
+        }
+        if (preg_match('/(?:<[=-]+\s*)?TOTAL\s+FEMALE/i', $name) || str_contains($name, 'TOTAL FEMALE')) {
+            $num = (int)preg_replace('/\D/', '', (string)($student['student_no'] ?? ''));
+            if ($num > 0) {
+                $femaleCount = $num;
+                $foundSummaryFemale = true;
+            }
+            continue;
+        }
+        if (preg_match('/(?:<[=-]+\s*)?COMBINED/i', $name) || str_contains($name, 'COMBINED')) {
+            $num = (int)preg_replace('/\D/', '', (string)($student['student_no'] ?? ''));
+            if ($num > 0) {
+                $combinedCount = $num;
+                $foundSummaryCombined = true;
+            }
+            continue;
+        }
+        if (str_starts_with($name, '<===') || str_starts_with($name, '<---')) {
+            continue;
+        }
+        $realStudents[] = $student;
+    }
+
+    if (!$foundSummaryMale) {
+        $maleCount = count(array_filter($realStudents, static fn($s): bool => ($s['gender'] ?? '') === 'male'));
+    }
+    if (!$foundSummaryFemale) {
+        $femaleCount = count(array_filter($realStudents, static fn($s): bool => ($s['gender'] ?? '') === 'female'));
+    }
+    if (!$foundSummaryCombined) {
+        $combinedCount = count($realStudents);
+    }
+
+    return [
+        'realStudents' => $realStudents,
+        'maleCount' => $maleCount,
+        'femaleCount' => $femaleCount,
+        'combinedCount' => $combinedCount,
+    ];
+}
+
 try {
     $action = (string)($_GET['action'] ?? '');
     if ($action === 'bootstrap' && $_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -98,6 +169,7 @@ try {
         json_response([
             'authenticated' => !empty($_SESSION['adviser']),
             'adviser' => $_SESSION['adviser'] ?? null,
+            'section' => $_SESSION['section'] ?? null,
             'role' => $_SESSION['role'] ?? 'admin',
             'csrf' => $_SESSION['csrf'],
         ]);
@@ -328,16 +400,44 @@ try {
         json_response(['ok' => true, 'adviser' => $fullName]);
     }
 
+    if ($action === 'set_profile' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_csrf();
+        $actor = require_adviser();
+        $body = request_body();
+        $name = trim((string)($body['teacher_name'] ?? $body['full_name'] ?? ''));
+        $section = trim((string)($body['teaching_section'] ?? $body['class_section'] ?? ''));
+        if ($name === '') {
+            json_response(['error' => 'Teacher name cannot be empty.'], 400);
+        }
+        $_SESSION['adviser'] = $name;
+        if ($section !== '') {
+            $_SESSION['section'] = $section;
+        }
+        if (!empty($_SESSION['teacher_account_id'])) {
+            try {
+                $store->update('teacher_accounts', ['id' => $_SESSION['teacher_account_id']], [
+                    'full_name' => $name,
+                    'updated_at' => getenv('DB_DRIVER') === 'supabase' ? date(DATE_ATOM) : date('Y-m-d H:i:s'),
+                ]);
+            } catch (Throwable) {
+                // ignore
+            }
+        }
+        json_response(['ok' => true, 'adviser' => $name, 'section' => $section]);
+    }
+
     if ($action === 'dashboard' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         $today = date('Y-m-d');
-        $students = $store->findAll('students', [], 'full_name');
+        $allStudents = $store->findAll('students', [], 'full_name');
+        $metrics = extract_student_metrics($allStudents);
+        $students = $metrics['realStudents'];
         $attendance = $store->findAll('attendance', ['attendance_date' => $today], 'attended_at');
         $byStudent = [];
         foreach ($attendance as $row) {
             $byStudent[$row['student_id']] = $row;
         }
         $present = count(array_filter($attendance, static fn(array $r): bool => $r['status'] === 'present'));
-        $absent = max(0, count($students) - $present);
+        $absent = max(0, $metrics['combinedCount'] - $present);
         $auditLogs = $store->findAll('audit_logs', [], 'created_at', true, 20);
         foreach ($auditLogs as &$log) {
             foreach (['before_data', 'after_data'] as $field) {
@@ -353,14 +453,19 @@ try {
             'attendance' => $attendance,
             'present' => $present,
             'absent' => $absent,
-            'total' => count($students),
+            'total' => $metrics['combinedCount'],
+            'maleCount' => $metrics['maleCount'],
+            'femaleCount' => $metrics['femaleCount'],
+            'combinedCount' => $metrics['combinedCount'],
             'byStudent' => $byStudent,
             'auditLogs' => $auditLogs,
         ]);
     }
 
     if ($action === 'students' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-        json_response(['students' => $store->findAll('students', [], 'full_name')]);
+        $allStudents = $store->findAll('students', [], 'full_name');
+        $metrics = extract_student_metrics($allStudents);
+        json_response(['students' => $metrics['realStudents']]);
     }
 
     if ($action === 'import' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -409,6 +514,9 @@ try {
             }
             $studentNo = trim((string)($row[$studentNoCol] ?? ''));
             $fullName = trim((string)($row[$fullNameCol] ?? ''));
+            if (is_summary_student(['full_name' => $fullName])) {
+                continue;
+            }
             $section = $sectionCol === false ? '' : trim((string)($row[$sectionCol] ?? ''));
             $genderValue = $genderCol === false ? '' : strtolower(trim((string)($row[$genderCol] ?? '')));
             $gender = match ($genderValue) {
@@ -492,7 +600,9 @@ try {
         if ($days > 366) {
             json_response(['error' => 'Reports can cover at most 366 days at a time.'], 400);
         }
-        $students = $store->findAll('students', [], 'full_name');
+        $allStudents = $store->findAll('students', [], 'full_name');
+        $metrics = extract_student_metrics($allStudents);
+        $students = $metrics['realStudents'];
         if (count($students) * $days > 100000) {
             json_response(['error' => 'This report is too large. Select a shorter date range.'], 413);
         }
