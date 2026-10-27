@@ -2490,54 +2490,480 @@ input::-ms-clear {
         background: white !important;
         color: black !important;
     }
-    .sidebar, .topbar, .welcome-row, .report-controls, .notice, .report-title, .text-button, .theme-toggle, .excel-toolbar, .excel-statusbar, .panel-heading {
-        display: none !important;
-    }
-    .main-area {
+    /* Hide everything except SF-2 printable area */
+    body > * { display: none !important; }
+    #sf2-printable-area {
+        display: block !important;
         margin: 0 !important;
         padding: 0 !important;
-        max-width: none !important;
-    }
-    .screen {
-        display: none !important;
-    }
-    #reports-screen {
-        display: block !important;
-    }
-    .panel {
-        border: 0 !important;
-        box-shadow: none !important;
-        background: transparent !important;
-    }
-    .excel-grid-wrap {
         overflow: visible !important;
-        max-height: none !important;
     }
-    .excel-table {
-        font-size: 9px;
+    /* Make the printable area visible at print time */
+    body:has(#sf2-printable-area) #sf2-printable-area,
+    #sf2-printable-area {
+        position: static !important;
     }
-    .excel-table td, .excel-table th {
-        padding: 5px 8px;
-        border: 1px solid #ccc;
-        white-space: normal;
-    }
-    .excel-table th.excel-row-num,
-    .excel-table td.excel-row-num {
-        background: #f5f5f5 !important;
-    }
-    .excel-table .excel-header-row th {
-        position: static;
-        background: #eee !important;
-        color: #333 !important;
-    }
-    .excel-table tbody tr:nth-child(even) td {
-        background: #fafafa !important;
-    }
-    .excel-action-col, .excel-table td:last-child, .excel-table th:last-child {
-        display: none !important;
-    }
-    @page {
-        size: landscape;
-        margin: 12mm;
-    }
+    .sf2-official-sheet { padding: 4mm !important; }
+    .sf2-grid-wrap { overflow: visible !important; }
+    .sf2-main-grid { font-size: 7pt !important; }
+    .sf2-main-grid th, .sf2-main-grid td { padding: 1px !important; border: 0.5pt solid #000 !important; }
+    .sf2-footer-section { margin-top: 6mm !important; }
+    .xlsx-sheet-tab-bar, .xlsx-col-headers-strip, .xlsx-formulabar, .xlsx-ribbon, .xlsx-menubar, .xlsx-titlebar { display: none !important; }
+    .sf2-preview-modal { display: none !important; }
+    @page { size: landscape; margin: 8mm; }
 }
+
+/* ==========================================================================
+   SF-2 Control Bar
+   ========================================================================== */
+.sf2-panel-container { overflow: hidden; }
+
+.sf2-control-bar {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid rgba(0,0,0,0.07);
+    background: rgba(255,255,255,0.5);
+}
+
+.sf2-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 10px 14px;
+    margin-bottom: 14px;
+}
+
+.sf2-controls-grid label { min-width: 0; font-size: 11px; }
+.sf2-controls-grid input,
+.sf2-controls-grid select { width: 100%; min-width: 0; font-size: 12px; height: 34px; }
+
+.sf2-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ==========================================================================
+   Bree XLSX Editor Chrome
+   ========================================================================== */
+.xlsx-window-frame {
+    border: 1px solid rgba(0,0,0,0.13);
+    border-radius: var(--squircle-lg);
+    overflow: hidden;
+    background: #f3f3f3;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+    margin: 12px;
+}
+
+/* Titlebar */
+.xlsx-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, #f0f0f0 0%, #e4e4e4 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.12);
+    padding: 5px 10px;
+    min-height: 30px;
+    user-select: none;
+}
+.xlsx-titlebar-left { display: flex; align-items: center; gap: 8px; }
+.xlsx-app-icon { flex-shrink: 0; }
+.xlsx-window-title { font-size: 12px; font-weight: 600; color: #333; }
+.xlsx-window-controls { display: flex; align-items: center; gap: 4px; }
+.xlsx-win-btn {
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.2);
+    font-size: 9px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+    background: #e0e0e0;
+    color: #444;
+    transition: background 0.1s;
+}
+.xlsx-win-btn.win-close { background: #d9534f; color: #fff; border-color: #c9302c; }
+.xlsx-win-btn.win-min  { background: #e6b400; color: #fff; border-color: #c9a200; }
+.xlsx-win-btn.win-max  { background: #5cb85c; color: #fff; border-color: #4cae4c; }
+.xlsx-win-btn:hover { filter: brightness(1.1); }
+
+/* Menu Tab Bar */
+.xlsx-menubar {
+    background: #e8e8e8;
+    border-bottom: 1px solid rgba(0,0,0,0.10);
+}
+.xlsx-menu-tabs { display: flex; align-items: stretch; }
+.xlsx-menu-tab {
+    font-size: 11.5px;
+    padding: 5px 14px;
+    color: #444;
+    cursor: pointer;
+    border-right: 1px solid rgba(0,0,0,0.07);
+    transition: background 0.12s;
+    user-select: none;
+}
+.xlsx-menu-tab:hover { background: rgba(0,0,0,0.06); }
+.xlsx-menu-tab.active {
+    background: #ffffff;
+    color: #1a5f2a;
+    font-weight: 600;
+    border-bottom: 2px solid #16a34a;
+}
+
+/* Ribbon */
+.xlsx-ribbon {
+    background: #ffffff;
+    border-bottom: 1px solid rgba(0,0,0,0.10);
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
+    padding: 4px 0 0;
+    gap: 0;
+}
+.xlsx-ribbon-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    border-right: 1px solid rgba(0,0,0,0.09);
+    padding: 0 6px;
+    min-width: fit-content;
+}
+.xlsx-ribbon-items {
+    display: flex;
+    align-items: flex-start;
+    gap: 2px;
+    flex: 1;
+    padding: 4px 0 2px;
+}
+.xlsx-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 3px;
+    padding: 4px 7px;
+    min-width: 44px;
+    border-radius: 4px;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 9.5px;
+    color: #333;
+    transition: background 0.12s, border-color 0.12s;
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+.xlsx-btn:hover { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.12); }
+.xlsx-btn.xlsx-action-highlight { background: rgba(22,163,74,0.07); border-color: rgba(22,163,74,0.25); color: #15803d; }
+.xlsx-btn.xlsx-action-highlight:hover { background: rgba(22,163,74,0.14); }
+.xlsx-group-label {
+    font-size: 9px;
+    color: #888;
+    text-align: center;
+    padding: 2px 0 4px;
+    border-top: 1px solid rgba(0,0,0,0.07);
+    margin-top: 2px;
+    letter-spacing: .02em;
+}
+
+/* Formula Bar */
+.xlsx-formulabar {
+    display: flex;
+    align-items: center;
+    background: #fafafa;
+    border-bottom: 1px solid rgba(0,0,0,0.10);
+    padding: 3px 8px;
+    gap: 6px;
+    min-height: 26px;
+}
+.xlsx-cell-address {
+    font-size: 11px;
+    font-weight: 600;
+    color: #333;
+    min-width: 52px;
+    text-align: center;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.15);
+    border-radius: 2px;
+    padding: 1px 6px;
+    font-family: 'Consolas', monospace;
+}
+.xlsx-formula-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-right: 1px solid rgba(0,0,0,0.12);
+    padding-right: 8px;
+}
+.fx-action {
+    font-size: 11px;
+    color: #555;
+    cursor: pointer;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-family: monospace;
+    transition: background 0.1s;
+}
+.fx-action:hover { background: rgba(0,0,0,0.08); }
+.fx-fn { font-style: italic; font-weight: bold; font-family: 'Times New Roman', serif; color: #1a56a6; font-size: 12px; }
+.xlsx-formula-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 11.5px;
+    color: #222;
+    font-family: 'Consolas', 'Courier New', monospace;
+    outline: none;
+    padding: 0 4px;
+}
+
+/* Column Header Strip */
+.xlsx-col-headers-strip {
+    display: flex;
+    align-items: stretch;
+    background: #f0f0f0;
+    border-bottom: 1px solid rgba(0,0,0,0.10);
+    overflow-x: hidden;
+}
+.xlsx-corner-cell {
+    min-width: 28px;
+    background: #e8e8e8;
+    border-right: 1px solid rgba(0,0,0,0.12);
+    flex-shrink: 0;
+}
+.xlsx-col-letters {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+.xlsx-col-letters span {
+    font-size: 9.5px;
+    color: #555;
+    padding: 2px 4px;
+    min-width: 18px;
+    text-align: center;
+    border-right: 1px solid rgba(0,0,0,0.07);
+    white-space: nowrap;
+    user-select: none;
+}
+.xlsx-col-letters span:hover { background: rgba(0,100,200,0.1); }
+
+/* Sheet Viewport */
+.xlsx-sheet-viewport {
+    background: #c8c8c8;
+    padding: 8px;
+    overflow: auto;
+    max-height: 72vh;
+}
+
+/* ==========================================================================
+   SF-2 Official Document Sheet
+   ========================================================================== */
+.sf2-official-sheet {
+    background: #ffffff;
+    color: #000;
+    padding: 14px 16px 20px;
+    min-width: 800px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+}
+
+/* Header with seals */
+.sf2-header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+}
+.sf2-logo-left, .sf2-logo-right { flex-shrink: 0; }
+.sf2-header-center { flex: 1; text-align: center; }
+.sf2-form-title {
+    font-size: 12px;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.3;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+/* Metadata table */
+.sf2-meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5px;
+    margin-bottom: 6px;
+    border: 1px solid #000;
+}
+.sf2-meta-table td { border: 1px solid #000; padding: 2px 5px; }
+.meta-label { font-weight: 700; background: #f5f5f5; white-space: nowrap; }
+.meta-val { font-style: italic; }
+.meta-school { font-weight: 700; font-style: normal; }
+.meta-month-val { font-weight: 700; }
+
+/* Main attendance grid */
+.sf2-grid-wrap { overflow-x: auto; }
+
+.sf2-main-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9px;
+    font-family: Arial, Helvetica, sans-serif;
+    table-layout: fixed;
+    border: 1.5px solid #000;
+}
+
+.sf2-main-grid th, .sf2-main-grid td {
+    border: 1px solid #000;
+    text-align: center;
+    padding: 2px 1px;
+    vertical-align: middle;
+    word-break: break-word;
+}
+
+.sf2-main-grid th {
+    background: #f0f0f0;
+    font-weight: 700;
+    font-size: 8.5px;
+}
+
+.col-num { width: 24px; min-width: 24px; }
+.col-name { width: 130px; min-width: 100px; text-align: left !important; padding-left: 3px !important; }
+.col-day { width: 22px; min-width: 18px; font-size: 8px; }
+.col-day-empty { background: #f8f8f8; }
+.col-date-span { background: #e8e8e8; }
+.col-total-span { background: #e8e8e8; }
+.col-total-abs, .col-total-pre { width: 34px; min-width: 28px; font-size: 8px; }
+.col-total { width: 30px; min-width: 24px; }
+.col-remarks { width: 70px; min-width: 60px; text-align: left !important; padding-left: 2px !important; font-size: 7.5px; }
+
+.day-label { font-size: 7px; color: #555; display: block; }
+.th-sub { font-size: 7px; font-weight: 400; color: #555; }
+
+/* Attendance marks */
+.att-present {
+    font-weight: 900;
+    font-size: 11px;
+    color: #000;
+}
+.att-absent { background: #fff; }
+
+/* Subtotal rows */
+.sf2-subtotal-row { background: #fffde8; }
+.sf2-subtotal-label {
+    font-size: 8px;
+    font-weight: 700;
+    font-style: italic;
+    color: #555;
+    text-align: left !important;
+    padding-left: 3px !important;
+}
+.total-day { background: #f5f5dc; font-weight: 600; font-size: 8px; }
+.sf2-total { font-weight: 700; }
+
+/* Footer section */
+.sf2-footer-section {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+    margin-top: 10px;
+    align-items: start;
+    font-size: 9.5px;
+}
+
+.sf2-summary-table {
+    border-collapse: collapse;
+    font-size: 9px;
+    min-width: 230px;
+}
+.sf2-summary-table th, .sf2-summary-table td {
+    border: 1px solid #000;
+    padding: 2px 6px;
+    text-align: center;
+}
+.sf2-summary-table th { background: #eee; font-weight: 700; }
+
+.legend-title { margin: 0 0 3px; font-size: 9px; }
+.legend-line { margin: 0 0 2px; font-size: 8.5px; line-height: 1.4; }
+
+.sf2-footer-cert { text-align: center; }
+.cert-text { font-size: 9px; font-style: italic; margin: 0 0 6px; }
+.cert-signature-box { display: flex; gap: 30px; justify-content: center; }
+.signature-line { border-top: 1px solid #000; padding-top: 4px; min-width: 140px; text-align: center; }
+.signature-line strong { display: block; font-size: 9.5px; }
+.signature-line small { font-size: 8px; color: #555; }
+
+/* Sheet Tab Bar */
+.xlsx-sheet-tab-bar {
+    display: flex;
+    align-items: center;
+    background: #e8e8e8;
+    border-top: 1px solid rgba(0,0,0,0.10);
+    padding: 3px 6px;
+    gap: 6px;
+    min-height: 26px;
+}
+.xlsx-tab-nav { display: flex; gap: 2px; font-size: 10px; color: #666; }
+.xlsx-tab-nav span { cursor: pointer; padding: 0 3px; }
+.xlsx-tab {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.15);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    padding: 3px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #15803d;
+    white-space: nowrap;
+}
+.xlsx-tab.active { border-bottom: 2px solid #16a34a; }
+.xlsx-tab-add { cursor: pointer; font-size: 14px; color: #888; padding: 0 4px; }
+.xlsx-tab-spacer { flex: 1; }
+.xlsx-zoom-control { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #555; }
+.xlsx-zoom-slider { width: 70px; }
+
+/* Report View Toggle Tabs */
+.report-view-toggle { display: flex; gap: 8px; align-items: center; }
+
+/* ==========================================================================
+   SF-2 Print Preview Modal
+   ========================================================================== */
+.sf2-preview-modal {
+    width: min(98vw, 1100px);
+    max-height: 94vh;
+    border-radius: var(--squircle-xl);
+    border: 1px solid var(--glass-border);
+    background: #f3f3f3;
+    padding: 0;
+    overflow: hidden;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+}
+.sf2-preview-modal::backdrop {
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(8px);
+}
+.sf2-preview-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: #fff;
+    border-bottom: 1px solid rgba(0,0,0,0.10);
+    flex-shrink: 0;
+}
+.sf2-preview-modal-header h2 { margin: 0; font-size: 17px; }
+.sf2-preview-modal-header .eyebrow { margin: 0 0 2px; }
+.sf2-preview-header-actions { display: flex; align-items: center; gap: 10px; }
+.sf2-preview-modal-body {
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+    background: #c8c8c8;
+}
+.sf2-preview-modal-body .sf2-official-sheet {
+    margin: 0 auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+

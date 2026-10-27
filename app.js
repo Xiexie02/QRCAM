@@ -316,6 +316,341 @@
                name.startsWith('<---');
     }
 
+    // =========================================================================
+    // SF-2 Report Engine
+    // =========================================================================
+
+    function initSF2Reports() {
+        // Tab switching
+        $('#report-tab-sf2')?.addEventListener('click', () => {
+            $('#sf2-panel').hidden = false;
+            $('#standard-report-panel').hidden = true;
+            $('#report-tab-sf2').classList.add('active');
+            $('#report-tab-sf2').className = 'button primary button-sm tab-btn';
+            $('#report-tab-log').className = 'button secondary button-sm tab-btn';
+        });
+        $('#report-tab-log')?.addEventListener('click', () => {
+            $('#sf2-panel').hidden = true;
+            $('#standard-report-panel').hidden = false;
+            $('#report-tab-sf2').className = 'button secondary button-sm tab-btn';
+            $('#report-tab-log').className = 'button primary button-sm tab-btn';
+        });
+
+        // Set default month to current month
+        const monthInput = $('#sf2-month-input');
+        if (monthInput && !monthInput.value) {
+            const now = new Date();
+            monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        // Populate section options
+        function populateSections() {
+            const sel = $('#sf2-section-select');
+            if (!sel) return;
+            const sections = [...new Set(state.students.map(s => s.class_section).filter(Boolean))].sort();
+            const current = sel.value;
+            sel.innerHTML = '<option value="">All Sections</option>' +
+                sections.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+            if (sections.includes(current)) sel.value = current;
+        }
+
+        // Generate button
+        $('#sf2-generate-btn')?.addEventListener('click', async () => {
+            populateSections();
+            const monthVal = $('#sf2-month-input')?.value;
+            if (!monthVal) { notice('Please select a month.', true); return; }
+            const sectionFilter = $('#sf2-section-select')?.value || '';
+            await generateSF2(monthVal, sectionFilter);
+        });
+
+        // Print buttons (both toolbar and ribbon)
+        function triggerSF2Print() {
+            const body = $('#sf2-table-body');
+            if (!body || body.querySelector('.empty')) {
+                notice('Generate SF-2 first before printing.', true);
+                return;
+            }
+            window.print();
+        }
+        $('#sf2-print-btn')?.addEventListener('click', triggerSF2Print);
+        $('#xlsx-print-action')?.addEventListener('click', triggerSF2Print);
+        $('#xlsx-quick-print')?.addEventListener('click', triggerSF2Print);
+
+        // View button → open preview modal
+        $('#sf2-view-btn')?.addEventListener('click', () => {
+            const body = $('#sf2-table-body');
+            if (!body || body.querySelector('.empty')) {
+                notice('Generate SF-2 first before previewing.', true);
+                return;
+            }
+            const modal = $('#sf2-preview-modal');
+            if (modal) {
+                // Clone the printable area into modal
+                const printable = $('#sf2-printable-area');
+                const container = $('#sf2-preview-modal-content');
+                if (printable && container) {
+                    container.innerHTML = '';
+                    container.appendChild(printable.cloneNode(true));
+                }
+                modal.showModal();
+            }
+        });
+        $('#sf2-preview-print-btn')?.addEventListener('click', triggerSF2Print);
+
+        // Print Preview (ribbon) → also open modal
+        $('#xlsx-preview-action')?.addEventListener('click', () => {
+            const body = $('#sf2-table-body');
+            if (!body || body.querySelector('.empty')) {
+                notice('Generate SF-2 first to preview.', true);
+                return;
+            }
+            const modal = $('#sf2-preview-modal');
+            if (modal) {
+                const printable = $('#sf2-printable-area');
+                const container = $('#sf2-preview-modal-content');
+                if (printable && container) {
+                    container.innerHTML = '';
+                    container.appendChild(printable.cloneNode(true));
+                }
+                modal.showModal();
+            }
+        });
+    }
+
+    async function generateSF2(monthStr, sectionFilter) {
+        const btn = $('#sf2-generate-btn');
+        if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Generating…'; }
+
+        try {
+            // Parse the month
+            const [year, month] = monthStr.split('-').map(Number);
+            const monthName = new Date(year, month - 1, 1).toLocaleString('en-PH', { month: 'long' });
+
+            // Build the 25 weekday date slots (5 weeks × M T W TH F)
+            // We go through the month week by week, Mon–Fri
+            const weekdays = []; // { day: number|null, label: string, date: string|null }
+            // Find first Monday on or before the 1st of month
+            const firstDay = new Date(year, month - 1, 1);
+            // Week starts on Monday (1=Mon...5=Fri)
+            const startOffset = (firstDay.getDay() + 6) % 7; // 0=Mon,4=Fri,5=Sat,6=Sun
+            const weekStart = new Date(firstDay);
+            weekStart.setDate(firstDay.getDate() - startOffset);
+
+            const labels = ['M', 'T', 'W', 'TH', 'F'];
+            for (let week = 0; week < 5; week++) {
+                for (let dow = 0; dow < 5; dow++) {
+                    const d = new Date(weekStart);
+                    d.setDate(weekStart.getDate() + week * 7 + dow);
+                    if (d.getMonth() + 1 === month && d.getFullYear() === year) {
+                        weekdays.push({
+                            dayNum: d.getDate(),
+                            label: labels[dow],
+                            dateStr: `${year}-${String(month).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+                        });
+                    } else {
+                        weekdays.push({ dayNum: null, label: labels[dow], dateStr: null });
+                    }
+                }
+            }
+
+            // Update metadata display
+            const schoolName = $('#sf2-school-input')?.value || 'Mercedes NHS';
+            const schoolId   = $('#sf2-schoolid-input')?.value || '303929';
+            const district   = $('#sf2-district-input')?.value || 'Mercedes';
+            const division   = $('#sf2-division-input')?.value || 'Zamboanga City';
+            const region     = $('#sf2-region-input')?.value || 'Region IX';
+            const sy         = $('#sf2-sy-input')?.value || '2024 - 2025';
+            const grade      = $('#sf2-grade-input')?.value || 'Grade 12';
+            const track      = $('#sf2-track-input')?.value || 'Academic Track - Science Technology, Engineering, and Mathematics';
+            const sem        = $('#sf2-sem-input')?.value || 'Second Semester';
+            const course     = $('#sf2-course-input')?.value || '';
+            const section    = sectionFilter || $('#sf2-section-select option:first-child')?.textContent || 'STEM';
+
+            if ($('#disp-school')) $('#disp-school').textContent = schoolName;
+            if ($('#disp-schoolid')) $('#disp-schoolid').textContent = schoolId;
+            if ($('#disp-district')) $('#disp-district').textContent = district;
+            if ($('#disp-division')) $('#disp-division').textContent = division;
+            if ($('#disp-region')) $('#disp-region').textContent = region;
+            if ($('#disp-sem')) $('#disp-sem').textContent = sem;
+            if ($('#disp-sy')) $('#disp-sy').textContent = sy;
+            if ($('#disp-grade')) $('#disp-grade').textContent = grade;
+            if ($('#disp-track')) $('#disp-track').textContent = track;
+            if ($('#disp-section')) $('#disp-section').textContent = sectionFilter || 'All Sections';
+            if ($('#disp-course')) $('#disp-course').textContent = course;
+            if ($('#disp-month')) $('#disp-month').textContent = `${monthName} ${year}`;
+
+            // Update formula bar
+            if ($('#xlsx-formula-text')) {
+                $('#xlsx-formula-text').value = `=${monthName} ${year} SF2-SHS – ${sectionFilter || 'All Sections'}`;
+            }
+            if ($('#sf2-active-label')) {
+                $('#sf2-active-label').textContent = `${monthName} ${year} – ${sectionFilter || 'All Sections'}`;
+            }
+
+            // Render column headers
+            const headerRow = $('#sf2-day-cols-header');
+            if (headerRow) {
+                headerRow.innerHTML = weekdays.map(w =>
+                    `<th class="col-day${w.dateStr ? '' : ' col-day-empty'}">${w.dayNum ?? ''}<br><span class="day-label">${w.label}</span></th>`
+                ).join('') +
+                '<th class="col-total-abs">ABSENT</th><th class="col-total-pre">PRESENT</th>';
+            }
+
+            // Fetch attendance for the month
+            const startDate = `${year}-${String(month).padStart(2,'0')}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+
+            const result = await api('report', { query: `&start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}` });
+            const rows = result.rows || [];
+
+            // Build lookup: "YYYY-MM-DD:student_no" → status
+            const attendanceLookup = {};
+            rows.forEach(r => {
+                attendanceLookup[`${r.date}:${r.student_no}`] = r.status;
+            });
+
+            // Filter students by section
+            let students = state.students.filter(s => !isSummaryStudent(s));
+            if (sectionFilter) {
+                students = students.filter(s => s.class_section === sectionFilter);
+            }
+
+            // Split by gender
+            const maleStudents = students.filter(s => (s.gender || 'unknown').toLowerCase() === 'male');
+            const femaleStudents = students.filter(s => (s.gender || 'unknown').toLowerCase() === 'female');
+
+            // Build a student row
+            function buildStudentRow(student, rowNum) {
+                let absCount = 0;
+                let preCount = 0;
+                const cells = weekdays.map(w => {
+                    if (!w.dateStr) return '<td class="col-day col-day-empty"></td>';
+                    const status = attendanceLookup[`${w.dateStr}:${student.student_no}`] || 'absent';
+                    // DepEd SF-2: X = PRESENT, blank = ABSENT (confirmed DepEd standard)
+                    if (status === 'present') {
+                        preCount++;
+                        return '<td class="col-day att-present">X</td>';
+                    } else {
+                        absCount++;
+                        return '<td class="col-day att-absent"></td>';
+                    }
+                }).join('');
+                return `<tr>
+                    <td class="col-num">${rowNum}</td>
+                    <td class="col-name sf2-name">${esc(student.full_name)}</td>
+                    ${cells}
+                    <td class="col-total sf2-total">${absCount}</td>
+                    <td class="col-total sf2-total">${preCount}</td>
+                    <td class="col-remarks"></td>
+                </tr>`;
+            }
+
+            // Build daily totals row
+            function buildTotalsRow(label, group) {
+                const dailyCounts = weekdays.map(w => {
+                    if (!w.dateStr) return { pre: 0, abs: 0 };
+                    let pre = 0, abs = 0;
+                    group.forEach(s => {
+                        const status = attendanceLookup[`${w.dateStr}:${s.student_no}`] || 'absent';
+                        if (status === 'present') pre++; else abs++;
+                    });
+                    return { pre, abs };
+                });
+                const totalAbs = dailyCounts.reduce((sum, d) => sum + d.abs, 0);
+                const totalPre = dailyCounts.reduce((sum, d) => sum + d.pre, 0);
+                const cells = dailyCounts.map((d, i) =>
+                    weekdays[i].dateStr
+                        ? `<td class="col-day total-day">${d.pre}</td>`
+                        : '<td class="col-day col-day-empty"></td>'
+                ).join('');
+                return `<tr class="sf2-subtotal-row">
+                    <td class="col-num"></td>
+                    <td class="col-name sf2-subtotal-label">${label}</td>
+                    ${cells}
+                    <td class="col-total sf2-total">${totalAbs}</td>
+                    <td class="col-total sf2-total">${totalPre}</td>
+                    <td class="col-remarks"></td>
+                </tr>`;
+            }
+
+            // Assemble tbody
+            let html = '';
+            // Male section
+            if (maleStudents.length > 0 || femaleStudents.length === 0) {
+                maleStudents.forEach((s, i) => { html += buildStudentRow(s, i + 1); });
+                html += buildTotalsRow('<=== TOTAL MALE', maleStudents);
+            }
+            // Female section
+            if (femaleStudents.length > 0) {
+                femaleStudents.forEach((s, i) => { html += buildStudentRow(s, i + 1); });
+                html += buildTotalsRow('<=== TOTAL FEMALE', femaleStudents);
+            }
+            // Combined
+            html += buildTotalsRow('<=== COMBINED', students);
+
+            if (!html) {
+                html = `<tr><td colspan="30" class="empty">No students found${sectionFilter ? ` in section "${sectionFilter}"` : ''}. Import students first.</td></tr>`;
+            }
+
+            $('#sf2-table-body').innerHTML = html;
+
+            // Update summary table
+            const maleCount = maleStudents.length;
+            const femaleCount = femaleStudents.length;
+            const totalCount = students.length;
+            const schoolDays = weekdays.filter(w => w.dateStr).length;
+
+            function avgPresent(group) {
+                if (!group.length || !schoolDays) return 0;
+                let total = 0;
+                weekdays.forEach(w => {
+                    if (!w.dateStr) return;
+                    group.forEach(s => {
+                        if ((attendanceLookup[`${w.dateStr}:${s.student_no}`] || 'absent') === 'present') total++;
+                    });
+                });
+                return (total / schoolDays).toFixed(1);
+            }
+
+            function pctPresent(group) {
+                if (!group.length || !schoolDays) return '0%';
+                let pre = 0, total = 0;
+                weekdays.forEach(w => {
+                    if (!w.dateStr) return;
+                    group.forEach(s => {
+                        total++;
+                        if ((attendanceLookup[`${w.dateStr}:${s.student_no}`] || 'absent') === 'present') pre++;
+                    });
+                });
+                return total ? Math.round((pre / total) * 100) + '%' : '0%';
+            }
+
+            if ($('#sf2-sum-male-reg')) $('#sf2-sum-male-reg').textContent = maleCount;
+            if ($('#sf2-sum-fem-reg')) $('#sf2-sum-fem-reg').textContent = femaleCount;
+            if ($('#sf2-sum-tot-reg')) $('#sf2-sum-tot-reg').textContent = totalCount;
+            if ($('#sf2-sum-male-avg')) $('#sf2-sum-male-avg').textContent = avgPresent(maleStudents);
+            if ($('#sf2-sum-fem-avg')) $('#sf2-sum-fem-avg').textContent = avgPresent(femaleStudents);
+            if ($('#sf2-sum-tot-avg')) $('#sf2-sum-tot-avg').textContent = avgPresent(students);
+            if ($('#sf2-sum-male-pct')) $('#sf2-sum-male-pct').textContent = pctPresent(maleStudents);
+            if ($('#sf2-sum-fem-pct')) $('#sf2-sum-fem-pct').textContent = pctPresent(femaleStudents);
+            if ($('#sf2-sum-tot-pct')) $('#sf2-sum-tot-pct').textContent = pctPresent(students);
+
+            // Adviser signature
+            const profile = getStoredTeacherProfile();
+            if ($('#sf2-adviser-sig') && profile.name) {
+                $('#sf2-adviser-sig').textContent = profile.name;
+            }
+
+            notice(`SF-2 generated for ${monthName} ${year}.`);
+
+        } catch (error) {
+            notice(error.message, true);
+        } finally {
+            if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Generate SF-2'; }
+        }
+    }
+
     async function init() {
         initTheme();
         initSidebar();
@@ -323,6 +658,7 @@
         ensurePasswordToggles();
         initSettings();
         initAdviserProfile();
+        initSF2Reports();
         try {
             const session = await api('bootstrap');
             state.csrf = session.csrf;

@@ -198,13 +198,347 @@ declare(strict_types=1);
             </section>
 
             <section id="reports-screen" class="screen" hidden>
-                <div class="welcome-row"><div><h2>Attendance reports</h2><p class="muted">Generate and review date-range attendance reports.</p></div></div>
-                <article id="standard-report-panel" class="panel report-panel">
-                    <div class="panel-heading"><div><h3>Generate report</h3><p class="muted">Select a date range to build a student attendance report.</p></div></div>
+                <div class="welcome-row">
+                    <div>
+                        <h2>Attendance reports</h2>
+                        <p class="muted">Official DepEd School Form 2 (SF2-SHS) monthly report and custom date logs.</p>
+                    </div>
+                    <div class="report-view-toggle">
+                        <button id="report-tab-sf2" class="button primary button-sm tab-btn active" type="button">School Form 2 (SF2-SHS)</button>
+                        <button id="report-tab-log" class="button secondary button-sm tab-btn" type="button">Date-Range Log</button>
+                    </div>
+                </div>
+
+                <!-- SF-2 DepEd Monthly Attendance Panel -->
+                <article id="sf2-panel" class="panel sf2-panel-container">
+                    <div class="sf2-control-bar">
+                        <div class="sf2-controls-grid">
+                            <label>Month<input id="sf2-month-input" type="month" required></label>
+                            <label>Section
+                                <select id="sf2-section-select">
+                                    <option value="">All Sections</option>
+                                </select>
+                            </label>
+                            <label>School Year<input id="sf2-sy-input" value="2024 - 2025"></label>
+                            <label>Grade Level<input id="sf2-grade-input" value="Grade 12"></label>
+                            <label>Track / Strand<input id="sf2-track-input" value="Academic Track - Science Technology, Engineering, and Mathematics"></label>
+                            <label>Semester<input id="sf2-sem-input" value="Second Semester"></label>
+                            <label>School Name<input id="sf2-school-input" value="Mercedes NHS"></label>
+                            <label>School ID<input id="sf2-schoolid-input" value="303929"></label>
+                            <label>District<input id="sf2-district-input" value="Mercedes"></label>
+                            <label>Division<input id="sf2-division-input" value="Zamboanga City"></label>
+                            <label>Region<input id="sf2-region-input" value="Region IX"></label>
+                            <label>Course (TVL only)<input id="sf2-course-input" placeholder="Optional"></label>
+                        </div>
+                        <div class="sf2-actions-row">
+                            <button class="button primary" id="sf2-generate-btn" type="button">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                <span>Generate SF-2</span>
+                            </button>
+                            <button class="button secondary" id="sf2-view-btn" type="button">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                <span>View SF-2</span>
+                            </button>
+                            <button class="button secondary" id="sf2-print-btn" type="button">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                <span>Print SF-2</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bree XLSX Editor Frame matching user's screenshot -->
+                    <div class="xlsx-window-frame" id="sf2-xlsx-frame">
+                        <!-- Window Titlebar -->
+                        <div class="xlsx-titlebar">
+                            <div class="xlsx-titlebar-left">
+                                <svg class="xlsx-app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+                                <div class="xlsx-window-title">Bree XLSX Editor - School-Form-2-SF-2.xls</div>
+                            </div>
+                            <div class="xlsx-window-controls" aria-hidden="true">
+                                <button type="button" class="xlsx-win-btn win-min" title="Minimize">&#9472;</button>
+                                <button type="button" class="xlsx-win-btn win-max" title="Maximize">&#9633;</button>
+                                <button type="button" class="xlsx-win-btn win-close" title="Close">&#10005;</button>
+                            </div>
+                        </div>
+
+                        <!-- Menu Tabs Bar (File, Home, Insert, etc.) -->
+                        <div class="xlsx-menubar">
+                            <div class="xlsx-menu-tabs">
+                                <span class="xlsx-menu-tab active">File</span>
+                                <span class="xlsx-menu-tab">Home</span>
+                                <span class="xlsx-menu-tab">Insert</span>
+                                <span class="xlsx-menu-tab">Page Layout</span>
+                                <span class="xlsx-menu-tab">Formulas</span>
+                                <span class="xlsx-menu-tab">Data</span>
+                                <span class="xlsx-menu-tab">Review</span>
+                                <span class="xlsx-menu-tab">View</span>
+                            </div>
+                        </div>
+
+                        <!-- Ribbon Toolbar matching screenshot -->
+                        <div class="xlsx-ribbon">
+                            <!-- Group: Common -->
+                            <div class="xlsx-ribbon-group">
+                                <div class="xlsx-ribbon-items">
+                                    <button type="button" class="xlsx-btn" id="xlsx-btn-new" title="New file">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                        <span>New</span>
+                                    </button>
+                                    <button type="button" class="xlsx-btn" id="xlsx-btn-open" title="Open file">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                        <span>Open</span>
+                                    </button>
+                                    <button type="button" class="xlsx-btn" id="xlsx-btn-save" title="Save file">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                        <span>Save</span>
+                                    </button>
+                                    <button type="button" class="xlsx-btn" id="xlsx-btn-saveas" title="Save As">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><path d="M12 3v5"/></svg>
+                                        <span>Save As</span>
+                                    </button>
+                                    <button type="button" class="xlsx-btn" id="xlsx-quick-print" title="Quick Print">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/><polygon points="12,16 14,19 10,19" fill="#16a34a"/></svg>
+                                        <span>Quick Print</span>
+                                    </button>
+                                    <button type="button" class="xlsx-btn xlsx-action-highlight" id="xlsx-print-action" title="Print document (DepEd SF-2)">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                                        <span>Print</span>
+                                    </button>
+                                    <button type="button" class="xlsx-btn" id="xlsx-preview-action" title="Print preview">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><circle cx="15" cy="15" r="4"/><line x1="18" y1="18" x2="21" y2="21"/></svg>
+                                        <span>Print Preview</span>
+                                    </button>
+                                    <button type="button" class="xlsx-btn" id="xlsx-btn-undo" title="Undo">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                                        <span>Undo</span>
+                                    </button>
+                                    <button type="button" class="xlsx-btn" id="xlsx-btn-redo" title="Redo">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                        <span>Redo</span>
+                                    </button>
+                                </div>
+                                <div class="xlsx-group-label">Common</div>
+                            </div>
+
+                            <!-- Group: Info -->
+                            <div class="xlsx-ribbon-group">
+                                <div class="xlsx-ribbon-items">
+                                    <button type="button" class="xlsx-btn" id="xlsx-btn-encrypt" title="Encrypt with Password">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1.5"/></svg>
+                                        <span>Encrypt with Password</span>
+                                    </button>
+                                    <button type="button" class="xlsx-btn" id="xlsx-btn-properties" title="Document Properties">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="12" cy="14" r="3"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                                        <span>Document Properties</span>
+                                    </button>
+                                </div>
+                                <div class="xlsx-group-label">Info</div>
+                            </div>
+
+                            <!-- Group: Help -->
+                            <div class="xlsx-ribbon-group">
+                                <div class="xlsx-ribbon-items">
+                                    <button type="button" class="xlsx-btn" id="xlsx-btn-upgrade" title="Upgrade">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                                        <span>Upgrade</span>
+                                    </button>
+                                </div>
+                                <div class="xlsx-group-label">Help</div>
+                            </div>
+                        </div>
+
+                        <!-- Formula Bar matching screenshot -->
+                        <div class="xlsx-formulabar">
+                            <div class="xlsx-cell-address" id="xlsx-current-cell">BK109</div>
+                            <div class="xlsx-formula-actions" aria-hidden="true">
+                                <span class="fx-action fx-cancel" title="Cancel">&#10005;</span>
+                                <span class="fx-action fx-check" title="Enter">&#10003;</span>
+                                <span class="fx-action fx-fn" title="Insert Function">fx</span>
+                            </div>
+                            <input type="text" class="xlsx-formula-input" id="xlsx-formula-text" value="=School Form 2 Daily Attendance Report of Learners For Senior High School (SF2-SHS)" readonly aria-label="Formula bar">
+                        </div>
+
+                        <!-- Top Column Headers Strip (matching screenshot EFF, G, J, K, L, M, N...) -->
+                        <div class="xlsx-col-headers-strip" aria-hidden="true">
+                            <div class="xlsx-corner-cell"></div>
+                            <div class="xlsx-col-letters">
+                                <span>EFF</span><span>G</span><span>J</span><span>K</span><span>L</span><span>M</span><span>N</span><span>P</span><span>R</span><span>S</span><span>T</span><span>U</span><span>V</span><span>W</span><span>Y</span><span>Z</span><span>AA</span><span>AB</span><span>AG</span><span>AH</span><span>AI</span><span>AJ</span><span>AK</span><span>AL</span><span>AM</span><span>AN</span><span>AO</span><span>AP</span><span>AQ</span><span>AR</span><span>AS</span><span>AT</span><span>AU</span><span>AV</span><span>AW</span><span>AX</span><span>AY</span><span>AZ</span><span>BA</span><span>BB</span><span>BC</span><span>BD</span><span>BE</span><span>BF</span><span>BG</span><span>BK</span><span>BL</span><span>BM</span><span>BN</span><span>BO</span><span>BR</span><span>BS</span><span>BT</span><span>BV</span><span>BW</span><span>BX</span><span>BZ</span><span>CB</span><span>CC</span><span>CD</span><span>CE</span><span>CF</span><span>CG</span><span>CH</span><span>CI</span>
+                            </div>
+                        </div>
+
+                        <!-- Viewport / Printable Area -->
+                        <div class="xlsx-sheet-viewport" id="sf2-printable-area">
+                            <div class="sf2-official-sheet">
+                                <!-- Top Official DepEd Header -->
+                                <div class="sf2-header-container">
+                                    <div class="sf2-logo-left">
+                                        <!-- Kagawaran ng Edukasyon Official Seal -->
+                                        <svg class="sf2-logo-img" viewBox="0 0 100 100" width="70" height="70" aria-label="DepEd Seal">
+                                            <circle cx="50" cy="50" r="48" fill="#ffffff" stroke="#0038a8" stroke-width="2"/>
+                                            <circle cx="50" cy="50" r="42" fill="none" stroke="#0038a8" stroke-width="1.2" stroke-dasharray="2,2"/>
+                                            <path id="seal-path-top" d="M 17 50 A 33 33 0 0 1 83 50" fill="none"/>
+                                            <path id="seal-path-bot" d="M 83 50 A 33 33 0 0 1 17 50" fill="none"/>
+                                            <text font-size="7" font-weight="bold" fill="#0038a8"><textPath href="#seal-path-top" startOffset="50%" text-anchor="middle">REPUBLIKA NG PILIPINAS</textPath></text>
+                                            <text font-size="6.5" font-weight="bold" fill="#0038a8"><textPath href="#seal-path-bot" startOffset="50%" text-anchor="middle">KAGAWARAN NG EDUKASYON</textPath></text>
+                                            <path d="M 50 26 L 50 74 A 24 24 0 0 0 50 26" fill="#0038a8"/>
+                                            <path d="M 50 26 L 50 74 A 24 24 0 0 1 50 26" fill="#ce1126"/>
+                                            <polygon points="50,38 52,43 57,43 53,46 55,51 50,48 45,51 47,46 43,43 48,43" fill="#fcd116"/>
+                                            <circle cx="50" cy="50" r="4" fill="#fcd116"/>
+                                        </svg>
+                                    </div>
+                                    <div class="sf2-header-center">
+                                        <h1 class="sf2-form-title">School Form 2 Daily Attendance Report of Learners For Senior High School (SF2-SHS)</h1>
+                                    </div>
+                                    <div class="sf2-logo-right">
+                                        <!-- Official DepEd Logo -->
+                                        <svg class="sf2-logo-img" viewBox="0 0 160 70" width="125" height="55" aria-label="DepEd Logo">
+                                            <path d="M 75 7 C 73 13 78 17 78 21 C 78 25 74 27 72 23 C 71 20 72 16 71 13 C 68 17 67 22 68 27 C 69 32 73 36 78 36 C 84 36 88 31 88 25 C 88 17 81 11 75 7 Z" fill="#e11d48"/>
+                                            <path d="M 76 17 C 75 21 78 24 78 27 C 78 30 75 32 74 29 C 73 27 74 24 73 22 C 71 25 71 28 72 31 C 73 33 75 35 78 35 C 81 35 83 32 83 28 C 83 23 79 19 76 17 Z" fill="#f59e0b"/>
+                                            <text x="80" y="46" font-family="'Times New Roman', serif" font-size="28" font-weight="bold" fill="#0038a8" text-anchor="middle">Dep<tspan font-size="32">ED</tspan></text>
+                                            <text x="80" y="58" font-family="Arial, sans-serif" font-size="7" font-weight="700" fill="#0038a8" letter-spacing="1.2" text-anchor="middle">DEPARTMENT OF EDUCATION</text>
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                <!-- Metadata Box Table -->
+                                <table class="sf2-meta-table">
+                                    <tbody>
+                                        <tr>
+                                            <td class="meta-label">School Name</td>
+                                            <td class="meta-val meta-school" id="disp-school">Mercedes NHS</td>
+                                            <td class="meta-label">School ID</td>
+                                            <td class="meta-val" id="disp-schoolid">303929</td>
+                                            <td class="meta-label">District</td>
+                                            <td class="meta-val" id="disp-district">Mercedes</td>
+                                            <td class="meta-label">Division</td>
+                                            <td class="meta-val" id="disp-division">Zamboanga City</td>
+                                            <td class="meta-label">Region</td>
+                                            <td class="meta-val" id="disp-region">Region IX</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="meta-label">Semester</td>
+                                            <td class="meta-val" id="disp-sem">Second Semester</td>
+                                            <td class="meta-label">School Year</td>
+                                            <td class="meta-val" id="disp-sy">2024 - 2025</td>
+                                            <td class="meta-label">Grade Level</td>
+                                            <td class="meta-val" id="disp-grade">Grade 12</td>
+                                            <td class="meta-label">Track and Strand</td>
+                                            <td class="meta-val" colspan="3" id="disp-track">Academic Track - Science Technology, Engineering, and Mathematics</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="meta-label">Section</td>
+                                            <td class="meta-val" id="disp-section">STEM</td>
+                                            <td class="meta-label" colspan="2">Course (for TVL only)</td>
+                                            <td class="meta-val" colspan="2" id="disp-course"></td>
+                                            <td class="meta-label">Month of</td>
+                                            <td class="meta-val meta-month-val" colspan="3" id="disp-month">October 2026</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <!-- Main Attendance Grid -->
+                                <div class="sf2-grid-wrap">
+                                    <table class="sf2-main-grid" id="sf2-main-table">
+                                        <thead>
+                                            <tr>
+                                                <th rowspan="2" class="col-num">No.</th>
+                                                <th rowspan="2" class="col-name">NAME<br><span class="th-sub">(Last Name, First Name, Middle Name)</span></th>
+                                                <th colspan="25" class="col-date-span">DATE</th>
+                                                <th colspan="2" class="col-total-span">Total for the Month</th>
+                                                <th rowspan="2" class="col-remarks">REMARKS<br><span class="th-sub">(If NLIS, state reason, please refer to legend number 2. If TRANSFERRED IN/OUT, write the name of School.)</span></th>
+                                            </tr>
+                                            <tr id="sf2-day-cols-header">
+                                                <!-- Dynamic 25 weekday columns (M T W TH F × 5) with date numbers -->
+                                            </tr>
+                                        </thead>
+                                        <tbody id="sf2-table-body">
+                                            <!-- Dynamically filled with Male students, Total Male, Female students, Total Female, Combined -->
+                                            <tr><td colspan="30" class="empty">Click <strong>Generate SF-2</strong> to populate this sheet with classroom attendance data.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- SF-2 DepEd Footer & Certification -->
+                                <div class="sf2-footer-section">
+                                    <div class="sf2-footer-summary">
+                                        <table class="sf2-summary-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Summary</th>
+                                                    <th>MALE</th>
+                                                    <th>FEMALE</th>
+                                                    <th>TOTAL</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>Total Registered Learners</td>
+                                                    <td id="sf2-sum-male-reg">0</td>
+                                                    <td id="sf2-sum-fem-reg">0</td>
+                                                    <td id="sf2-sum-tot-reg">0</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Daily Average Attendance</td>
+                                                    <td id="sf2-sum-male-avg">0</td>
+                                                    <td id="sf2-sum-fem-avg">0</td>
+                                                    <td id="sf2-sum-tot-avg">0</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Percentage of Attendance</td>
+                                                    <td id="sf2-sum-male-pct">0%</td>
+                                                    <td id="sf2-sum-fem-pct">0%</td>
+                                                    <td id="sf2-sum-tot-pct">0%</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="sf2-footer-legend">
+                                        <p class="legend-title"><strong>GUIDELINES:</strong></p>
+                                        <p class="legend-line">1. Attendance shall be recorded daily. Write <strong>X</strong> in the column if learner is absent, leave <strong>blank</strong> if present.</p>
+                                        <p class="legend-line">2. Reasons for Dropout/NLIS: <strong>A</strong>-Domestic, <strong>B</strong>-Individual, <strong>C</strong>-School-related, <strong>D</strong>-Geographic, <strong>E</strong>-Financial.</p>
+                                    </div>
+                                    <div class="sf2-footer-cert">
+                                        <p class="cert-text">I certify that this is a true and correct report.</p>
+                                        <div class="cert-signature-box">
+                                            <div class="signature-line">
+                                                <strong id="sf2-adviser-sig">Adviser Name</strong>
+                                                <small>(Signature of Teacher / Adviser)</small>
+                                            </div>
+                                            <div class="signature-line">
+                                                <strong id="sf2-head-sig">School Head / Principal</strong>
+                                                <small>(Signature of School Head)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Spreadsheet Sheet Tab Bar matching screenshot -->
+                        <div class="xlsx-sheet-tab-bar">
+                            <div class="xlsx-tab-nav" aria-hidden="true">
+                                <span>&#9664;</span><span>&#9654;</span>
+                            </div>
+                            <div class="xlsx-tab active">
+                                <span class="tab-text">school form 2 shs ver2018.2.1.1</span>
+                            </div>
+                            <div class="xlsx-tab-add" aria-hidden="true">+</div>
+                            <div class="xlsx-tab-spacer"></div>
+                            <div class="xlsx-zoom-control">
+                                <span>100%</span>
+                                <input type="range" min="50" max="150" value="100" class="xlsx-zoom-slider" disabled>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Date-Range Attendance Log (Toggleable) -->
+                <article id="standard-report-panel" class="panel report-panel" hidden>
+                    <div class="panel-heading"><div><h3>Date-range attendance log</h3><p class="muted">Select a date range to review individual daily check-in logs.</p></div></div>
                     <form id="report-form" class="report-controls">
                         <label>Start date<input id="report-start" type="date" required></label>
                         <label>End date<input id="report-end" type="date" required></label>
-                        <button class="button primary" type="submit">Generate report</button>
+                        <button class="button primary" type="submit">Generate log</button>
                     </form>
                     <div id="report-excel-view" class="report-excel-view" hidden>
                         <div class="excel-toolbar">
@@ -212,13 +546,13 @@ declare(strict_types=1);
                                 <span class="excel-file-icon" aria-hidden="true">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                                 </span>
-                                <span id="excel-sheet-name" class="excel-sheet-tab">Attendance</span>
+                                <span id="excel-sheet-name" class="excel-sheet-tab">Attendance Log</span>
                             </div>
                             <div class="excel-toolbar-right">
                                 <span id="report-row-count" class="excel-row-count"></span>
                                 <button class="button secondary button-sm" id="print-report" type="button" disabled>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                                    Print
+                                    Print Log
                                 </button>
                             </div>
                         </div>
@@ -247,8 +581,8 @@ declare(strict_types=1);
                     <div id="report-empty-state" class="report-empty-state">
                         <div class="report-empty-inner">
                             <svg class="report-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            <p class="report-empty-title">No report generated yet</p>
-                            <p class="muted">Select a start and end date above, then click <strong>Generate report</strong> to view attendance data in spreadsheet form.</p>
+                            <p class="report-empty-title">No log generated yet</p>
+                            <p class="muted">Select a start and end date above, then click <strong>Generate log</strong> to view raw check-in records.</p>
                         </div>
                     </div>
                 </article>
@@ -341,5 +675,26 @@ declare(strict_types=1);
             <p id="profile-save-status" class="settings-status" role="status" aria-live="polite"></p>
         </form>
     </dialog>
+
+    <!-- SF-2 Print Preview Modal -->
+    <dialog id="sf2-preview-modal" class="sf2-preview-modal">
+        <div class="sf2-preview-modal-header">
+            <div>
+                <p class="eyebrow">DepEd SF-2 SHS</p>
+                <h2>Print Preview</h2>
+            </div>
+            <div class="sf2-preview-header-actions">
+                <button id="sf2-preview-print-btn" class="button primary" type="button">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    Print
+                </button>
+                <button class="icon-button close-dialog" type="button" aria-label="Close preview">×</button>
+            </div>
+        </div>
+        <div id="sf2-preview-modal-content" class="sf2-preview-modal-body">
+            <!-- Cloned printable SF-2 area injected here by JS -->
+        </div>
+    </dialog>
+
 </body>
 </html>
