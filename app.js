@@ -584,13 +584,34 @@
         try {
             const result = await api('report', { query: `&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}` });
             state.reportRows = result.rows;
-            $('#report-title').textContent = `Attendance: ${start} through ${end} · ${result.rows.length} student-days`;
-            $('#report-rows').innerHTML = result.rows.length ? result.rows.map((row) => `<tr>
+            const rowCount = result.rows.length;
+            // Update Excel view sheet tab label
+            const sheetName = $('#excel-sheet-name');
+            if (sheetName) sheetName.textContent = `Attendance ${start} – ${end}`;
+            // Update row count badge
+            const rowCountEl = $('#report-row-count');
+            if (rowCountEl) rowCountEl.textContent = `${rowCount} row${rowCount !== 1 ? 's' : ''}`;
+            // Update status bar
+            const statusSummary = $('#excel-status-summary');
+            if (statusSummary) {
+                const presentCount = result.rows.filter(r => r.status === 'present').length;
+                const absentCount = result.rows.filter(r => r.status === 'absent').length;
+                const excusedCount = result.rows.filter(r => r.status === 'excused').length;
+                statusSummary.textContent = `${rowCount} records  ·  Present: ${presentCount}  ·  Absent: ${absentCount}  ·  Excused: ${excusedCount}`;
+            }
+            // Render rows with row numbers
+            $('#report-rows').innerHTML = rowCount ? result.rows.map((row, idx) => `<tr>
+                <td class="excel-row-num">${idx + 1}</td>
                 <td>${esc(row.date)}</td><td>${esc(row.student_no)}</td><td>${esc(row.full_name)}</td><td>${esc(row.class_section || '—')}</td>
                 <td><span class="status-badge ${esc(row.status)}">${esc(row.status)}</span></td><td>${esc(row.attended_at || '—')}</td><td>${esc(row.note || '—')}</td>
                 <td><button class="text-button adjust-attendance" data-student="${esc(state.students.find((s) => s.student_no === row.student_no)?.id || '')}" data-date="${esc(row.date)}">Adjust</button></td>
-            </tr>`).join('') : '<tr><td colspan="8" class="empty">No students are enrolled.</td></tr>';
-            $('#print-report').disabled = false;
+            </tr>`).join('') : '<tr><td colspan="9" class="empty">No attendance records found for this date range.</td></tr>';
+            // Show excel view, hide empty state
+            const excelView = $('#report-excel-view');
+            const emptyState = $('#report-empty-state');
+            if (excelView) excelView.hidden = false;
+            if (emptyState) emptyState.hidden = true;
+            $('#print-report').disabled = rowCount === 0;
         } catch (error) {
             notice(error.message, true);
         }

@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#09090b">
     <title>Student Check-in — QRCAMv2</title>
     <link rel="icon" type="image/png" href="assets/logo.png">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=liquid_glass_v1">
     <script defer src="assets/html5-qrcode.min.js"></script>
-    <script defer src="checkin.js"></script>
+    <script defer src="checkin.js?v=liquid_glass_v1"></script>
 </head>
 <body class="checkin-page">
     <main class="checkin-wrap">

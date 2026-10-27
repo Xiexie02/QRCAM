@@ -5,13 +5,14 @@ declare(strict_types=1);
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#09090b">
     <title>QRCAMv2 — Attendance</title>
     <link rel="icon" type="image/png" href="assets/logo.png">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=excel_view_v2">
     <script defer src="assets/qrcode-browser.js"></script>
     <script defer src="assets/html5-qrcode.min.js"></script>
-    <script defer src="app.js"></script>
+    <script defer src="app.js?v=excel_view_v2"></script>
 </head>
 <body>
     <main id="login-view" class="login-wrap" hidden>
@@ -194,38 +195,59 @@ declare(strict_types=1);
             </section>
 
             <section id="reports-screen" class="screen" hidden>
-                <div class="welcome-row"><div><h2>Attendance reports</h2><p class="muted">Build monthly SF-2 and date-range attendance reports.</p></div></div>
-                <article id="sf2-report-panel" class="panel report-panel sf2-report-panel">
-                    <div class="panel-heading sf2-heading"><div><h3>SF-2 Monthly Attendance</h3><p class="muted">Build a printable monthly roster from enrolled students.</p></div></div>
-                    <form id="sf2-form" class="report-controls sf2-controls">
-                        <label>School<input name="school" maxlength="160" value="Maria Clara L. Lobregat NHS"></label>
-                        <label>School ID<input name="school_id" maxlength="30" value="303922"></label>
-                        <label>Division<input name="division" maxlength="100" value="Zamboanga City"></label>
-                        <label>District<input name="district" maxlength="100" placeholder="Not specified"></label>
-                        <label>School year<input name="school_year" maxlength="20" value="2026-2027" required></label>
-                        <label>Semester<input name="semester" maxlength="40" placeholder="If applicable"></label>
-                        <label>Grade level<input name="grade" maxlength="30" value="Grade 10" required></label>
-                        <label>Track / strand<input name="track" maxlength="100" placeholder="Optional"></label>
-                        <label>Course (TVL only)<input name="course" maxlength="100" placeholder="Optional"></label>
-                        <label>Section<input name="section" maxlength="120" value="COMPASSION"></label>
-                        <label>Region<input name="region" maxlength="100" value="Region IX"></label>
-                        <label>Month<input name="month" type="month" required></label>
-                        <label>Adviser<input name="adviser" maxlength="160" placeholder="Adviser name"></label>
-                        <button class="button secondary" id="sf2-import" type="button">Import SF1 roster CSV</button>
-                        <button class="button primary" type="submit">Review SF-2</button>
-                    </form>
-                    <p class="sf2-guidance">This follows the attached Senior High School SF-2 layout. The attached SF1 is Grade 10, so verify the editable grade and school-year details before official use. Daily attendance and totals are intentionally blank; add an LRN reference column because the attached SF-2 template has no LRN column.</p>
-                    <div id="sf2-sheet" class="sf2-sheet" hidden></div>
-                </article>
+                <div class="welcome-row"><div><h2>Attendance reports</h2><p class="muted">Generate and review date-range attendance reports.</p></div></div>
                 <article id="standard-report-panel" class="panel report-panel">
+                    <div class="panel-heading"><div><h3>Generate report</h3><p class="muted">Select a date range to build a student attendance report.</p></div></div>
                     <form id="report-form" class="report-controls">
                         <label>Start date<input id="report-start" type="date" required></label>
                         <label>End date<input id="report-end" type="date" required></label>
                         <button class="button primary" type="submit">Generate report</button>
-                        <button class="button secondary" id="print-report" type="button" disabled>Print report</button>
                     </form>
-                    <div id="report-title" class="report-title"></div>
-                    <div class="table-wrap"><table><thead><tr><th>DATE</th><th>STUDENT ID</th><th>STUDENT</th><th>SECTION</th><th>STATUS</th><th>TIME</th><th>NOTE</th><th></th></tr></thead><tbody id="report-rows"><tr><td colspan="8" class="empty">Select a date range to generate a report.</td></tr></tbody></table></div>
+                    <div id="report-excel-view" class="report-excel-view" hidden>
+                        <div class="excel-toolbar">
+                            <div class="excel-toolbar-left">
+                                <span class="excel-file-icon" aria-hidden="true">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                </span>
+                                <span id="excel-sheet-name" class="excel-sheet-tab">Attendance</span>
+                            </div>
+                            <div class="excel-toolbar-right">
+                                <span id="report-row-count" class="excel-row-count"></span>
+                                <button class="button secondary button-sm" id="print-report" type="button" disabled>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                    Print
+                                </button>
+                            </div>
+                        </div>
+                        <div class="excel-grid-wrap">
+                            <table class="excel-table" id="excel-report-table">
+                                <thead>
+                                    <tr class="excel-header-row">
+                                        <th class="excel-row-num">#</th>
+                                        <th>Date</th>
+                                        <th>Student ID</th>
+                                        <th>Student Name</th>
+                                        <th>Section</th>
+                                        <th>Status</th>
+                                        <th>Time</th>
+                                        <th>Note</th>
+                                        <th class="excel-action-col"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-rows"><tr><td colspan="9" class="empty">Select a date range to generate a report.</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="excel-statusbar">
+                            <span id="excel-status-summary" class="excel-status-text"></span>
+                        </div>
+                    </div>
+                    <div id="report-empty-state" class="report-empty-state">
+                        <div class="report-empty-inner">
+                            <svg class="report-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <p class="report-empty-title">No report generated yet</p>
+                            <p class="muted">Select a start and end date above, then click <strong>Generate report</strong> to view attendance data in spreadsheet form.</p>
+                        </div>
+                    </div>
                 </article>
             </section>
         </section>
