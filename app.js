@@ -320,6 +320,16 @@
     // SF-2 Report Engine
     // =========================================================================
 
+    function populateSF2Sections() {
+        const sel = $('#sf2-section-select');
+        if (!sel) return;
+        const sections = [...new Set((state.students || []).map(s => s.class_section).filter(Boolean))].sort();
+        const current = sel.value;
+        sel.innerHTML = '<option value="">All Sections</option>' +
+            sections.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+        if (sections.includes(current)) sel.value = current;
+    }
+
     function initSF2Reports() {
         // Tab switching
         $('#report-tab-sf2')?.addEventListener('click', () => {
@@ -328,6 +338,7 @@
             $('#report-tab-sf2').classList.add('active');
             $('#report-tab-sf2').className = 'button primary button-sm tab-btn';
             $('#report-tab-log').className = 'button secondary button-sm tab-btn';
+            populateSF2Sections();
         });
         $('#report-tab-log')?.addEventListener('click', () => {
             $('#sf2-panel').hidden = true;
@@ -343,16 +354,7 @@
             monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         }
 
-        // Populate section options
-        function populateSections() {
-            const sel = $('#sf2-section-select');
-            if (!sel) return;
-            const sections = [...new Set(state.students.map(s => s.class_section).filter(Boolean))].sort();
-            const current = sel.value;
-            sel.innerHTML = '<option value="">All Sections</option>' +
-                sections.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-            if (sections.includes(current)) sel.value = current;
-        }
+        populateSF2Sections();
 
         // Generate button
         $('#sf2-generate-btn')?.addEventListener('click', async () => {
@@ -363,7 +365,7 @@
             await generateSF2(monthVal, sectionFilter);
         });
 
-        // Print buttons (both toolbar and ribbon)
+        // Print function
         function triggerSF2Print() {
             const body = $('#sf2-table-body');
             if (!body || body.querySelector('.empty')) {
@@ -372,45 +374,57 @@
             }
             window.print();
         }
-        $('#sf2-print-btn')?.addEventListener('click', triggerSF2Print);
         $('#xlsx-print-action')?.addEventListener('click', triggerSF2Print);
         $('#xlsx-quick-print')?.addEventListener('click', triggerSF2Print);
 
-        // View button → open preview modal
-        $('#sf2-view-btn')?.addEventListener('click', () => {
-            const body = $('#sf2-table-body');
-            if (!body || body.querySelector('.empty')) {
-                notice('Generate SF-2 first before previewing.', true);
-                return;
-            }
+        // View button → auto-generate data and display the full SF-2 Excel Form in preview modal
+        $('#sf2-view-btn')?.addEventListener('click', async () => {
+            populateSections();
+            const monthVal = $('#sf2-month-input')?.value;
+            if (!monthVal) { notice('Please select a month.', true); return; }
+            const sectionFilter = $('#sf2-section-select')?.value || '';
+
+            // Generate SF-2 data with all students and attendance
+            await generateSF2(monthVal, sectionFilter);
+
             const modal = $('#sf2-preview-modal');
             if (modal) {
-                // Clone the printable area into modal
-                const printable = $('#sf2-printable-area');
+                const frame = $('#sf2-xlsx-frame');
                 const container = $('#sf2-preview-modal-content');
-                if (printable && container) {
+                if (frame && container) {
                     container.innerHTML = '';
-                    container.appendChild(printable.cloneNode(true));
+                    const clone = frame.cloneNode(true);
+                    clone.id = 'sf2-xlsx-frame-modal';
+                    clone.querySelectorAll('#xlsx-print-action, #xlsx-quick-print, #xlsx-preview-action').forEach(btn => {
+                        btn.addEventListener('click', triggerSF2Print);
+                    });
+                    container.appendChild(clone);
                 }
                 modal.showModal();
             }
         });
         $('#sf2-preview-print-btn')?.addEventListener('click', triggerSF2Print);
 
-        // Print Preview (ribbon) → also open modal
-        $('#xlsx-preview-action')?.addEventListener('click', () => {
+        // Print Preview (ribbon) → open modal
+        $('#xlsx-preview-action')?.addEventListener('click', async () => {
+            const monthVal = $('#sf2-month-input')?.value;
+            const sectionFilter = $('#sf2-section-select')?.value || '';
             const body = $('#sf2-table-body');
             if (!body || body.querySelector('.empty')) {
-                notice('Generate SF-2 first to preview.', true);
-                return;
+                if (monthVal) await generateSF2(monthVal, sectionFilter);
             }
             const modal = $('#sf2-preview-modal');
             if (modal) {
-                const printable = $('#sf2-printable-area');
+                const frame = $('#sf2-xlsx-frame');
                 const container = $('#sf2-preview-modal-content');
-                if (printable && container) {
+                if (frame && container) {
                     container.innerHTML = '';
-                    container.appendChild(printable.cloneNode(true));
+                    const clone = frame.cloneNode(true);
+                    clone.id = 'sf2-xlsx-frame-modal';
+                    clone.querySelectorAll('#xlsx-print-action, #xlsx-quick-print, #xlsx-preview-action').forEach(btn => {
+                        btn.addEventListener('click', triggerSF2Print);
+                    });
+                    container.appendChild(clone);
                 }
                 modal.showModal();
             }
@@ -510,15 +524,45 @@
                 attendanceLookup[`${r.date}:${r.student_no}`] = r.status;
             });
 
+            // Ensure state.students is loaded
+            if (!state.students || state.students.length === 0) {
+                try {
+                    const dash = await api('dashboard');
+                    if (dash && dash.students) {
+                        state.dashboard = dash;
+                        state.students = (dash.students || []).filter(s => !isSummaryStudent(s));
+                    }
+                } catch (_) {}
+            }
+
             // Filter students by section
-            let students = state.students.filter(s => !isSummaryStudent(s));
+            let students = (state.students || []).filter(s => !isSummaryStudent(s));
             if (sectionFilter) {
                 students = students.filter(s => s.class_section === sectionFilter);
             }
 
             // Split by gender
-            const maleStudents = students.filter(s => (s.gender || 'unknown').toLowerCase() === 'male');
-            const femaleStudents = students.filter(s => (s.gender || 'unknown').toLowerCase() === 'female');
+            let maleStudents = students.filter(s => String(s.gender || '').toLowerCase() === 'male');
+            let femaleStudents = students.filter(s => String(s.gender || '').toLowerCase() === 'female');
+
+            // Robust fallback if gender is not tagged on student objects
+            if (maleStudents.length === 0 && femaleStudents.length === 0 && students.length > 0) {
+                const maleTotal = state.dashboard?.maleCount || 0;
+                if (maleTotal > 0 && maleTotal < students.length) {
+                    maleStudents = students.slice(0, maleTotal);
+                    femaleStudents = students.slice(maleTotal);
+                } else {
+                    maleStudents = students;
+                    femaleStudents = [];
+                }
+            } else if (maleStudents.length + femaleStudents.length < students.length) {
+                const accounted = new Set([...maleStudents, ...femaleStudents].map(s => s.id || s.student_no));
+                students.forEach(s => {
+                    if (!accounted.has(s.id || s.student_no)) {
+                        maleStudents.push(s);
+                    }
+                });
+            }
 
             // Build a student row
             function buildStudentRow(student, rowNum) {
@@ -576,21 +620,19 @@
 
             // Assemble tbody
             let html = '';
-            // Male section
-            if (maleStudents.length > 0 || femaleStudents.length === 0) {
+            if (students.length === 0) {
+                html = `<tr><td colspan="30" class="empty">No students found${sectionFilter ? ` in section "${esc(sectionFilter)}"` : ''}. Import students first.</td></tr>`;
+            } else {
+                // Male section
                 maleStudents.forEach((s, i) => { html += buildStudentRow(s, i + 1); });
                 html += buildTotalsRow('<=== TOTAL MALE', maleStudents);
-            }
-            // Female section
-            if (femaleStudents.length > 0) {
+
+                // Female section
                 femaleStudents.forEach((s, i) => { html += buildStudentRow(s, i + 1); });
                 html += buildTotalsRow('<=== TOTAL FEMALE', femaleStudents);
-            }
-            // Combined
-            html += buildTotalsRow('<=== COMBINED', students);
 
-            if (!html) {
-                html = `<tr><td colspan="30" class="empty">No students found${sectionFilter ? ` in section "${sectionFilter}"` : ''}. Import students first.</td></tr>`;
+                // Combined
+                html += buildTotalsRow('<=== COMBINED', students);
             }
 
             $('#sf2-table-body').innerHTML = html;
@@ -677,6 +719,7 @@
             const realStudents = (data.students || []).filter((s) => !isSummaryStudent(s));
             state.students = realStudents;
             renderDashboard(data);
+            populateSF2Sections();
             if (!$('#students-screen').hidden) renderStudents(realStudents);
             $('#header-date').textContent = new Date(`${data.date}T00:00:00`).toLocaleDateString(undefined, {
                 weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
@@ -782,6 +825,7 @@
         $('.sidebar').classList.remove('open');
         if (name === 'students') refreshDashboard();
         if (name === 'settings') loadTeacherAccounts();
+        if (name === 'reports') populateSF2Sections();
     }
 
     async function loadStudents() {

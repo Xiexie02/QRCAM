@@ -2490,26 +2490,60 @@ input::-ms-clear {
         background: white !important;
         color: black !important;
     }
-    /* Hide everything except SF-2 printable area */
-    body > * { display: none !important; }
+    .sidebar,
+    .topbar,
+    .welcome-row,
+    .sf2-control-bar,
+    .xlsx-titlebar,
+    .xlsx-menubar,
+    .xlsx-ribbon,
+    .xlsx-formulabar,
+    .xlsx-col-headers-strip,
+    .xlsx-sheet-tab-bar,
+    .sf2-preview-modal-header,
+    .screen:not(#reports-screen),
+    #standard-report-panel {
+        display: none !important;
+    }
+    #app-view,
+    .main-area,
+    #reports-screen,
+    #sf2-panel,
+    .xlsx-window-frame,
+    .xlsx-sheet-viewport,
     #sf2-printable-area {
         display: block !important;
         margin: 0 !important;
         padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: white !important;
+        overflow: visible !important;
+        max-height: none !important;
+    }
+    .sf2-preview-modal {
+        position: static !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: white !important;
+        max-height: none !important;
         overflow: visible !important;
     }
-    /* Make the printable area visible at print time */
-    body:has(#sf2-printable-area) #sf2-printable-area,
-    #sf2-printable-area {
-        position: static !important;
+    .sf2-preview-modal::backdrop {
+        display: none !important;
     }
-    .sf2-official-sheet { padding: 4mm !important; }
+    .sf2-official-sheet {
+        margin: 0 !important;
+        padding: 4mm !important;
+        box-shadow: none !important;
+        border: none !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
     .sf2-grid-wrap { overflow: visible !important; }
     .sf2-main-grid { font-size: 7pt !important; }
-    .sf2-main-grid th, .sf2-main-grid td { padding: 1px !important; border: 0.5pt solid #000 !important; }
+    .sf2-main-grid th, .sf2-main-grid td { padding: 1.5px 1px !important; border: 0.5pt solid #000 !important; }
     .sf2-footer-section { margin-top: 6mm !important; }
-    .xlsx-sheet-tab-bar, .xlsx-col-headers-strip, .xlsx-formulabar, .xlsx-ribbon, .xlsx-menubar, .xlsx-titlebar { display: none !important; }
-    .sf2-preview-modal { display: none !important; }
     @page { size: landscape; margin: 8mm; }
 }
 
@@ -2529,6 +2563,23 @@ input::-ms-clear {
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: 10px 14px;
     margin-bottom: 14px;
+}
+
+.sf2-controls-simple {
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    align-items: end;
+}
+
+@media (max-width: 900px) {
+    .sf2-controls-simple {
+        grid-template-columns: repeat(2, minmax(130px, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .sf2-controls-simple {
+        grid-template-columns: 1fr;
+    }
 }
 
 .sf2-controls-grid label { min-width: 0; font-size: 11px; }
@@ -2929,7 +2980,7 @@ input::-ms-clear {
    SF-2 Print Preview Modal
    ========================================================================== */
 .sf2-preview-modal {
-    width: min(98vw, 1100px);
+    width: min(98vw, 1280px);
     max-height: 94vh;
     border-radius: var(--squircle-xl);
     border: 1px solid var(--glass-border);
@@ -2959,8 +3010,12 @@ input::-ms-clear {
 .sf2-preview-modal-body {
     flex: 1;
     overflow: auto;
-    padding: 16px;
-    background: #c8c8c8;
+    padding: 12px;
+    background: #525659;
+}
+.sf2-preview-modal-body .xlsx-window-frame {
+    margin: 0 auto;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
 }
 .sf2-preview-modal-body .sf2-official-sheet {
     margin: 0 auto;

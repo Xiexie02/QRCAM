@@ -212,23 +212,31 @@ declare(strict_types=1);
                 <!-- SF-2 DepEd Monthly Attendance Panel -->
                 <article id="sf2-panel" class="panel sf2-panel-container">
                     <div class="sf2-control-bar">
-                        <div class="sf2-controls-grid">
-                            <label>Month<input id="sf2-month-input" type="month" required></label>
+                        <div class="sf2-controls-grid sf2-controls-simple">
+                            <label>Month
+                                <input id="sf2-month-input" type="month" required>
+                            </label>
                             <label>Section
                                 <select id="sf2-section-select">
                                     <option value="">All Sections</option>
                                 </select>
                             </label>
-                            <label>School Year<input id="sf2-sy-input" value="2024 - 2025"></label>
-                            <label>Grade Level<input id="sf2-grade-input" value="Grade 12"></label>
-                            <label>Track / Strand<input id="sf2-track-input" value="Academic Track - Science Technology, Engineering, and Mathematics"></label>
-                            <label>Semester<input id="sf2-sem-input" value="Second Semester"></label>
-                            <label>School Name<input id="sf2-school-input" value="Mercedes NHS"></label>
-                            <label>School ID<input id="sf2-schoolid-input" value="303929"></label>
-                            <label>District<input id="sf2-district-input" value="Mercedes"></label>
-                            <label>Division<input id="sf2-division-input" value="Zamboanga City"></label>
-                            <label>Region<input id="sf2-region-input" value="Region IX"></label>
-                            <label>Course (TVL only)<input id="sf2-course-input" placeholder="Optional"></label>
+                            <label>Grade Level
+                                <input id="sf2-grade-input" value="Grade 12">
+                            </label>
+                            <label>School Year
+                                <input id="sf2-sy-input" value="2024 - 2025">
+                            </label>
+
+                            <!-- Hidden DepEd school metadata defaults -->
+                            <input type="hidden" id="sf2-track-input" value="Academic Track - Science Technology, Engineering, and Mathematics">
+                            <input type="hidden" id="sf2-sem-input" value="Second Semester">
+                            <input type="hidden" id="sf2-school-input" value="Mercedes NHS">
+                            <input type="hidden" id="sf2-schoolid-input" value="303929">
+                            <input type="hidden" id="sf2-district-input" value="Mercedes">
+                            <input type="hidden" id="sf2-division-input" value="Zamboanga City">
+                            <input type="hidden" id="sf2-region-input" value="Region IX">
+                            <input type="hidden" id="sf2-course-input" value="">
                         </div>
                         <div class="sf2-actions-row">
                             <button class="button primary" id="sf2-generate-btn" type="button">
@@ -238,10 +246,6 @@ declare(strict_types=1);
                             <button class="button secondary" id="sf2-view-btn" type="button">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                 <span>View SF-2</span>
-                            </button>
-                            <button class="button secondary" id="sf2-print-btn" type="button">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                                <span>Print SF-2</span>
                             </button>
                         </div>
                     </div>
@@ -681,7 +685,7 @@ declare(strict_types=1);
         <div class="sf2-preview-modal-header">
             <div>
                 <p class="eyebrow">DepEd SF-2 SHS</p>
-                <h2>Print Preview</h2>
+                <h2>School Form 2 (SF2-SHS) — Excel Form</h2>
             </div>
             <div class="sf2-preview-header-actions">
                 <button id="sf2-preview-print-btn" class="button primary" type="button">

@@ -109,6 +109,7 @@ function extract_student_metrics(array $allStudents): array
     $foundSummaryMale = false;
     $foundSummaryFemale = false;
     $foundSummaryCombined = false;
+    $currentSection = 'male';
 
     foreach ($allStudents as $student) {
         $name = strtoupper(trim((string)($student['full_name'] ?? '')));
@@ -118,6 +119,7 @@ function extract_student_metrics(array $allStudents): array
                 $maleCount = $num;
                 $foundSummaryMale = true;
             }
+            $currentSection = 'female';
             continue;
         }
         if (preg_match('/(?:<[=-]+\s*)?TOTAL\s+FEMALE/i', $name) || str_contains($name, 'TOTAL FEMALE')) {
@@ -126,6 +128,7 @@ function extract_student_metrics(array $allStudents): array
                 $femaleCount = $num;
                 $foundSummaryFemale = true;
             }
+            $currentSection = 'other';
             continue;
         }
         if (preg_match('/(?:<[=-]+\s*)?COMBINED/i', $name) || str_contains($name, 'COMBINED')) {
@@ -139,6 +142,14 @@ function extract_student_metrics(array $allStudents): array
         if (str_starts_with($name, '<===') || str_starts_with($name, '<---')) {
             continue;
         }
+
+        $existingGender = strtolower(trim((string)($student['gender'] ?? '')));
+        if ($existingGender === 'male' || $existingGender === 'female') {
+            $student['gender'] = $existingGender;
+        } else {
+            $student['gender'] = ($currentSection === 'female') ? 'female' : 'male';
+        }
+
         $realStudents[] = $student;
     }
 
@@ -151,6 +162,8 @@ function extract_student_metrics(array $allStudents): array
     if (!$foundSummaryCombined) {
         $combinedCount = count($realStudents);
     }
+
+    usort($realStudents, static fn($a, $b) => strcasecmp((string)($a['full_name'] ?? ''), (string)($b['full_name'] ?? '')));
 
     return [
         'realStudents' => $realStudents,
@@ -428,7 +441,7 @@ try {
 
     if ($action === 'dashboard' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         $today = date('Y-m-d');
-        $allStudents = $store->findAll('students', [], 'full_name');
+        $allStudents = $store->findAll('students', [], 'created_at');
         $metrics = extract_student_metrics($allStudents);
         $students = $metrics['realStudents'];
         $attendance = $store->findAll('attendance', ['attendance_date' => $today], 'attended_at');
@@ -463,7 +476,7 @@ try {
     }
 
     if ($action === 'students' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-        $allStudents = $store->findAll('students', [], 'full_name');
+        $allStudents = $store->findAll('students', [], 'created_at');
         $metrics = extract_student_metrics($allStudents);
         json_response(['students' => $metrics['realStudents']]);
     }
@@ -600,7 +613,7 @@ try {
         if ($days > 366) {
             json_response(['error' => 'Reports can cover at most 366 days at a time.'], 400);
         }
-        $allStudents = $store->findAll('students', [], 'full_name');
+        $allStudents = $store->findAll('students', [], 'created_at');
         $metrics = extract_student_metrics($allStudents);
         $students = $metrics['realStudents'];
         if (count($students) * $days > 100000) {
@@ -624,6 +637,7 @@ try {
                     'student_no' => $student['student_no'],
                     'full_name' => $student['full_name'],
                     'class_section' => $student['class_section'],
+                    'gender' => $student['gender'] ?? 'male',
                     'status' => $entry['status'] ?? 'absent',
                     'attended_at' => $entry['attended_at'] ?? '',
                     'note' => $entry['note'] ?? '',
