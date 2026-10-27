@@ -5,8 +5,35 @@ create table if not exists public.students (
     student_no text not null unique,
     full_name text not null,
     class_section text not null default '',
+    gender text not null default 'unknown' check (gender in ('male', 'female', 'unknown')),
     qr_token text not null unique,
     created_at timestamptz not null
+);
+
+alter table public.students
+    add column if not exists gender text not null default 'unknown';
+
+do $$
+begin
+    if not exists (
+        select 1 from pg_constraint
+        where conname = 'students_gender_check'
+          and conrelid = 'public.students'::regclass
+    ) then
+        alter table public.students
+            add constraint students_gender_check check (gender in ('male', 'female', 'unknown'));
+    end if;
+end;
+$$;
+
+create table if not exists public.teacher_accounts (
+    id uuid primary key,
+    username text not null unique,
+    full_name text not null,
+    password_hash text not null,
+    is_active boolean not null default true,
+    created_at timestamptz not null,
+    updated_at timestamptz not null
 );
 
 create table if not exists public.attendance (
@@ -35,11 +62,13 @@ create index if not exists audit_record_created_idx on public.audit_logs (record
 alter table public.students enable row level security;
 alter table public.attendance enable row level security;
 alter table public.audit_logs enable row level security;
+alter table public.teacher_accounts enable row level security;
 
 grant usage on schema public to service_role;
 grant select, insert, update on public.students to service_role;
 grant select, insert, update on public.attendance to service_role;
 grant select, insert on public.audit_logs to service_role;
+grant select, insert, update on public.teacher_accounts to service_role;
 
 create or replace function public.adjust_attendance(
     p_actor text,

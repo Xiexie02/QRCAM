@@ -13,7 +13,7 @@ interface QrcamStore
 final class MysqlStore implements QrcamStore
 {
     private PDO $pdo;
-    private const TABLES = ['students', 'attendance', 'audit_logs'];
+    private const TABLES = ['students', 'attendance', 'audit_logs', 'teacher_accounts'];
 
     public function __construct(array $config)
     {
@@ -167,7 +167,7 @@ final class SupabaseStore implements QrcamStore
 {
     private string $url;
     private string $key;
-    private const TABLES = ['students', 'attendance', 'audit_logs'];
+    private const TABLES = ['students', 'attendance', 'audit_logs', 'teacher_accounts'];
 
     public function __construct(string $url, string $key)
     {

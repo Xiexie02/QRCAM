@@ -6,8 +6,33 @@ CREATE TABLE IF NOT EXISTS students (
     student_no VARCHAR(80) NOT NULL UNIQUE,
     full_name VARCHAR(200) NOT NULL,
     class_section VARCHAR(120) NOT NULL DEFAULT '',
+    gender ENUM('male', 'female', 'unknown') NOT NULL DEFAULT 'unknown',
     qr_token CHAR(64) NOT NULL UNIQUE,
     created_at DATETIME NOT NULL
+) ENGINE=InnoDB;
+
+SET @gender_column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'students' AND COLUMN_NAME = 'gender'
+);
+SET @gender_migration = IF(
+    @gender_column_exists = 0,
+    'ALTER TABLE students ADD COLUMN gender ENUM(''male'', ''female'', ''unknown'') NOT NULL DEFAULT ''unknown'' AFTER class_section',
+    'SELECT ''students.gender already exists'''
+);
+PREPARE gender_statement FROM @gender_migration;
+EXECUTE gender_statement;
+DEALLOCATE PREPARE gender_statement;
+
+CREATE TABLE IF NOT EXISTS teacher_accounts (
+    id CHAR(36) PRIMARY KEY,
+    username VARCHAR(120) NOT NULL UNIQUE,
+    full_name VARCHAR(160) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    KEY teacher_accounts_name (full_name)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS attendance (

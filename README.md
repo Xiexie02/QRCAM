@@ -5,12 +5,18 @@ A responsive adviser console and mobile-browser QR attendance scanner. Students 
 ## Features
 
 - Adviser login with PHP password hashing, session protection, and CSRF checks.
+- Responsive adviser console with working overview, roster, reports, classroom settings, teacher account creation/editing, connection status, manual refresh, and sign-out controls.
+- Administrator-managed teacher logins with password hashing; teachers can update their own name, username, and password after confirming their current password.
+- Overview displays overall, male, and female enrollee totals; gender is not shown on individual student rows.
+- Persistent light/dark themes, collapsible navigation, and an editable monthly SF-2 preview with automatic attendance totals before printing.
 - Student enrollment and CSV import (`student_no,full_name,class_section`).
 - Per-student QR codes that can be downloaded or printed.
 - Mobile camera scanning; duplicate scans do not create duplicate attendance.
 - Automatically refreshed dashboard, present/absent totals, and attendance list.
 - Atomic manual attendance changes with before/after audit records and an adviser-visible history.
 - Printable daily attendance reports across a date range (up to 366 days).
+- Printable monthly SF-2 roster reports using enrolled students, with editable school metadata and blank attendance cells for manual completion.
+- SF-1 roster CSV import shortcut in Reports; the generated roster CSV uses LRN as `student_no` and the SF-1 section as `class_section`.
 - Mobile-friendly layout and local copies of the QR libraries; no third-party runtime CDN.
 
 ## Requirements
@@ -35,6 +41,8 @@ Camera access requires HTTPS or `localhost` in modern browsers. On a LAN, serve 
 
    Set `ADMIN_USERNAME` as desired. Never commit `.env`.
 5. Start Apache and MySQL in XAMPP and open `http://localhost/QRCAMv2/`.
+
+For an existing database, re-run `database\mysql.sql` to create the teacher-account table. In Supabase mode, re-run `database\supabase.sql`. Sign in with the administrator credentials, then use Settings → Teacher accounts to create teacher logins. The administrator login remains configured in `.env`; teacher account passwords are stored as PHP password hashes.
 
 The browser QR libraries are included in `assets`, so the app has no runtime CDN dependency and needs no internet connection in MySQL mode. The included assets can be regenerated with `npm install` and `npm run build:qr`; copy the updated scanner bundle from `node_modules\html5-qrcode\html5-qrcode.min.js` into `assets\html5-qrcode.min.js` if you upgrade that package.
 
@@ -87,15 +95,15 @@ Hostinger's exact menu labels and available PHP extensions depend on the plan an
 
 ## CSV format
 
-Use a UTF-8 CSV with a header row. Required columns are `student_no` and `full_name`; `class_section` is optional. Example:
+Use a UTF-8 CSV with a header row. Required columns are `student_no` and `full_name`; `class_section` and `gender` (or `sex`) are optional. Gender values `M`/`Male` and `F`/`Female` are normalized; blank or other values count as unspecified. Example:
 
 ```csv
-student_no,full_name,class_section
-2026001,Alex Rivera,BSCS-1A
-2026002,Jamie Santos,BSCS-1A
+student_no,full_name,class_section,gender
+2026001,Alex Rivera,BSCS-1A,Male
+2026002,Jamie Santos,BSCS-1A,Female
 ```
 
-Existing student numbers are skipped during import. QR tokens are random and cannot be derived from student numbers.
+Existing student numbers are skipped during import; when the CSV contains a known gender, that gender is updated for existing rows so a roster can backfill gender for students imported earlier. Re-run `database\supabase.sql` after deploying schema changes, or re-run `database\mysql.sql` to add the gender column to an existing MySQL database. QR tokens are random and cannot be derived from student numbers.
 
 ## Security and operations
 

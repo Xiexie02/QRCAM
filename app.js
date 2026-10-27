@@ -1,7 +1,7 @@
 (() => {
     'use strict';
 
-    const state = { csrf: '', students: [], dashboard: null, scanner: null, qrStudent: null, reportRows: [] };
+    const state = { csrf: '', students: [], dashboard: null, scanner: null, qrStudent: null, reportRows: [], role: 'admin', refreshTimer: null };
     const $ = (selector) => document.querySelector(selector);
     const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -24,6 +24,7 @@
 
     function notice(message, isError = false) {
         const node = $('#notice');
+        if (!node) return;
         node.textContent = message;
         node.classList.toggle('error', isError);
         node.hidden = false;
@@ -31,20 +32,115 @@
         notice.timer = window.setTimeout(() => { node.hidden = true; }, 6000);
     }
 
-    function showAuthenticated(authenticated, adviser = '') {
+    function showAuthenticated(authenticated, adviser = '', role = 'admin') {
         $('#login-view').hidden = authenticated;
         $('#app-view').hidden = !authenticated;
+        state.role = role;
         if (authenticated) {
             $('#adviser-name').textContent = adviser || 'Adviser';
+            const roleEl = $('#adviser-role');
+            if (roleEl) roleEl.textContent = role === 'admin' ? 'Administrator' : 'Teacher';
+            const avatarEl = $('#adviser-avatar');
+            if (avatarEl) avatarEl.textContent = initials(adviser || 'A');
+            const teacherMgmt = $('#teacher-management');
+            if (teacherMgmt) teacherMgmt.hidden = role !== 'admin';
+            const myAccount = $('#my-account-panel');
+            if (myAccount) myAccount.hidden = role !== 'teacher';
             refreshDashboard();
+            if (role === 'teacher') loadMyAccount();
         }
     }
 
+    function applyTheme(theme) {
+        const isDark = theme === 'dark';
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        localStorage.setItem('qrcam_theme', isDark ? 'dark' : 'light');
+        const toggleBtn = $('#theme-toggle');
+        if (toggleBtn) {
+            toggleBtn.textContent = isDark ? 'Light mode' : 'Dark mode';
+            toggleBtn.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+        }
+        const themeSelect = $('select[name="theme"]');
+        if (themeSelect) themeSelect.value = isDark ? 'dark' : 'light';
+    }
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem('qrcam_theme') || 'light';
+        applyTheme(savedTheme);
+        $('#theme-toggle')?.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            applyTheme(current === 'dark' ? 'light' : 'dark');
+        });
+        $('select[name="theme"]')?.addEventListener('change', (event) => {
+            applyTheme(event.target.value);
+        });
+    }
+
+    function initSidebar() {
+        const collapsed = localStorage.getItem('qrcam_sidebar_collapsed') === 'true';
+        if (collapsed) $('.sidebar')?.classList.add('collapsed');
+        $('#brand-toggle')?.addEventListener('click', () => {
+            const sidebar = $('.sidebar');
+            if (!sidebar) return;
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('qrcam_sidebar_collapsed', sidebar.classList.contains('collapsed'));
+        });
+        $('#refresh-button')?.addEventListener('click', refreshDashboard);
+    }
+
+    function initPasswordToggles() {
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('.password-toggle-btn');
+            if (!button) return;
+            event.preventDefault();
+            const wrap = button.closest('.password-field-wrap');
+            if (!wrap) return;
+            const input = wrap.querySelector('input');
+            if (!input) return;
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            button.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+            button.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+            const showIcon = button.querySelector('.eye-show');
+            const hideIcon = button.querySelector('.eye-hide');
+            if (showIcon && hideIcon) {
+                showIcon.hidden = isPassword;
+                hideIcon.hidden = !isPassword;
+            }
+        });
+    }
+
+    function ensurePasswordToggles() {
+        document.querySelectorAll('input[type="password"]').forEach((input) => {
+            if (input.closest('.password-field-wrap')) return;
+            const wrap = document.createElement('div');
+            wrap.className = 'password-field-wrap';
+            input.parentNode.insertBefore(wrap, input);
+            wrap.appendChild(input);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'password-toggle-btn';
+            button.setAttribute('aria-label', 'Show password');
+            button.setAttribute('title', 'Show password');
+            button.setAttribute('tabindex', '-1');
+            button.innerHTML = `
+                <svg class="eye-icon eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <svg class="eye-icon eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+            `;
+            wrap.appendChild(button);
+        });
+    }
+
     async function init() {
+        initTheme();
+        initSidebar();
+        initPasswordToggles();
+        ensurePasswordToggles();
+        initSettings();
         try {
             const session = await api('bootstrap');
             state.csrf = session.csrf;
-            showAuthenticated(session.authenticated, session.adviser);
+            showAuthenticated(session.authenticated, session.adviser, session.role || 'admin');
         } catch (error) {
             $('#login-view').hidden = false;
             $('#login-error').textContent = error.message;
@@ -71,6 +167,9 @@
         $('#total-count').textContent = data.total;
         $('#present-count').textContent = data.present;
         $('#absent-count').textContent = data.absent;
+        if (data.maleCount !== undefined && $('#male-count')) $('#male-count').textContent = data.maleCount;
+        if (data.femaleCount !== undefined && $('#female-count')) $('#female-count').textContent = data.femaleCount;
+        if (data.unknownGenderCount !== undefined && $('#unknown-gender-count')) $('#unknown-gender-count').textContent = data.unknownGenderCount;
         const presentRate = data.total ? Math.round(data.present / data.total * 100) : 0;
         const absentRate = data.total ? Math.round(data.absent / data.total * 100) : 0;
         $('#present-percent').textContent = `${presentRate}% of students`;
@@ -117,17 +216,49 @@
     }
 
     function setScreen(name) {
-        const labels = { dashboard: 'Overview', students: 'Students', reports: 'Reports' };
+        const labels = { dashboard: 'Overview', students: 'Students', reports: 'Reports', settings: 'Settings' };
         document.querySelectorAll('.screen').forEach((screen) => { screen.hidden = screen.id !== `${name}-screen`; });
         document.querySelectorAll('.nav-link').forEach((button) => button.classList.toggle('active', button.dataset.screen === name));
         $('#page-title').textContent = labels[name] || 'Overview';
         $('.sidebar').classList.remove('open');
         if (name === 'students') refreshDashboard();
+        if (name === 'settings') loadTeacherAccounts();
     }
 
     async function loadStudents() {
         const result = await api('students');
         renderStudents(result.students);
+    }
+
+    async function loadTeacherAccounts() {
+        if (state.role !== 'admin') return;
+        const tbody = $('#teacher-account-rows');
+        if (!tbody) return;
+        try {
+            const data = await api('teacher_accounts');
+            const accounts = data.accounts || [];
+            tbody.innerHTML = accounts.length ? accounts.map((acc) => `<tr>
+                <td><strong>${esc(acc.full_name)}</strong></td>
+                <td>${esc(acc.username)}</td>
+                <td><span class="status-badge ${acc.is_active ? 'present' : 'absent'}">${acc.is_active ? 'Active' : 'Inactive'}</span></td>
+                <td><button class="text-button edit-teacher" data-id="${esc(acc.id)}" data-name="${esc(acc.full_name)}" data-username="${esc(acc.username)}" data-active="${acc.is_active ? '1' : '0'}">Edit</button></td>
+            </tr>`).join('') : '<tr><td colspan="4" class="empty">No teacher accounts created yet.</td></tr>';
+        } catch (error) {
+            tbody.innerHTML = `<tr><td colspan="4" class="empty error-text">${esc(error.message)}</td></tr>`;
+        }
+    }
+
+    async function loadMyAccount() {
+        if (state.role !== 'teacher') return;
+        const form = $('#my-account-form');
+        if (!form) return;
+        try {
+            const data = await api('my_account');
+            if (data.account) {
+                if (form.elements.full_name) form.elements.full_name.value = data.account.full_name || '';
+                if (form.elements.username) form.elements.username.value = data.account.username || '';
+            }
+        } catch (_) {}
     }
 
     async function startScanner() {
@@ -190,7 +321,7 @@
         $('#qr-student-name').textContent = student.full_name;
         $('#qr-student-meta').textContent = `${student.student_no} · ${student.class_section || 'No section'}`;
         await QRCode.toCanvas($('#qr-canvas'), student.qr_token, {
-            width: 280, margin: 2, errorCorrectionLevel: 'H', color: { dark: '#10251f', light: '#ffffff' },
+            width: 280, margin: 2, errorCorrectionLevel: 'H', color: { dark: '#000000', light: '#ffffff' },
         });
         $('#qr-dialog').showModal();
     }
@@ -222,6 +353,159 @@
         }
     }
 
+    function initSettings() {
+        const settingsForm = $('#settings-form');
+        if (settingsForm) {
+            const defaults = {
+                school: 'Maria Clara L. Lobregat NHS',
+                school_id: '303922',
+                division: 'Zamboanga City',
+                district: '',
+                region: 'Region IX',
+                school_year: '2026-2027',
+                semester: '',
+                grade: 'Grade 10',
+                track: '',
+                course: '',
+                section: 'COMPASSION',
+                adviser: '',
+                refresh_seconds: '3',
+                theme: 'light'
+            };
+            const saved = JSON.parse(localStorage.getItem('qrcam_settings') || '{}');
+            const config = { ...defaults, ...saved };
+            for (const [key, val] of Object.entries(config)) {
+                if (settingsForm.elements[key]) settingsForm.elements[key].value = val;
+            }
+            if (config.theme) applyTheme(config.theme);
+            resetRefreshInterval(parseInt(config.refresh_seconds, 10));
+
+            settingsForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const fd = new FormData(settingsForm);
+                const obj = {};
+                fd.forEach((v, k) => { obj[k] = v; });
+                localStorage.setItem('qrcam_settings', JSON.stringify(obj));
+                $('#settings-status').textContent = 'Settings saved.';
+                setTimeout(() => { $('#settings-status').textContent = ''; }, 3000);
+                if (obj.theme) applyTheme(obj.theme);
+                resetRefreshInterval(parseInt(obj.refresh_seconds, 10));
+            });
+
+            $('#reset-settings')?.addEventListener('click', () => {
+                localStorage.removeItem('qrcam_settings');
+                for (const [key, val] of Object.entries(defaults)) {
+                    if (settingsForm.elements[key]) settingsForm.elements[key].value = val;
+                }
+                $('#settings-status').textContent = 'Defaults restored.';
+                setTimeout(() => { $('#settings-status').textContent = ''; }, 3000);
+                applyTheme(defaults.theme);
+                resetRefreshInterval(parseInt(defaults.refresh_seconds, 10));
+            });
+        }
+
+        $('#teacher-create-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const fd = new FormData(form);
+            const statusEl = $('#teacher-management-status');
+            statusEl.textContent = '';
+            statusEl.classList.remove('error');
+            try {
+                await api('create_teacher', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        full_name: fd.get('full_name'),
+                        username: fd.get('username'),
+                        password: fd.get('password'),
+                    }),
+                });
+                form.reset();
+                statusEl.textContent = 'Teacher account created successfully.';
+                await loadTeacherAccounts();
+            } catch (err) {
+                statusEl.textContent = err.message;
+                statusEl.classList.add('error');
+            }
+        });
+
+        $('#my-account-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const fd = new FormData(form);
+            const statusEl = $('#my-account-status');
+            statusEl.textContent = '';
+            statusEl.classList.remove('error');
+            try {
+                const res = await api('update_my_account', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        full_name: fd.get('full_name'),
+                        username: fd.get('username'),
+                        current_password: fd.get('current_password'),
+                        new_password: fd.get('new_password') || undefined,
+                    }),
+                });
+                statusEl.textContent = 'Account updated successfully.';
+                if (res.adviser) $('#adviser-name').textContent = res.adviser;
+                form.elements.current_password.value = '';
+                form.elements.new_password.value = '';
+            } catch (err) {
+                statusEl.textContent = err.message;
+                statusEl.classList.add('error');
+            }
+        });
+
+        document.body.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-teacher');
+            if (editBtn) {
+                const dialog = $('#teacher-edit-dialog');
+                const form = $('#teacher-edit-form');
+                if (dialog && form) {
+                    form.elements.id.value = editBtn.dataset.id;
+                    form.elements.full_name.value = editBtn.dataset.name;
+                    form.elements.username.value = editBtn.dataset.username;
+                    form.elements.is_active.checked = editBtn.dataset.active === '1';
+                    form.elements.password.value = '';
+                    $('#teacher-edit-error').textContent = '';
+                    dialog.showModal();
+                }
+            }
+        });
+
+        $('#teacher-edit-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const fd = new FormData(form);
+            const errEl = $('#teacher-edit-error');
+            errEl.textContent = '';
+            try {
+                await api('update_teacher', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        id: fd.get('id'),
+                        full_name: fd.get('full_name'),
+                        username: fd.get('username'),
+                        password: fd.get('password') || undefined,
+                        is_active: form.elements.is_active.checked,
+                    }),
+                });
+                $('#teacher-edit-dialog').close();
+                notice('Teacher account updated.');
+                await loadTeacherAccounts();
+            } catch (err) {
+                errEl.textContent = err.message;
+            }
+        });
+    }
+
+    function resetRefreshInterval(seconds) {
+        if (state.refreshTimer) window.clearInterval(state.refreshTimer);
+        if (seconds > 0) {
+            state.refreshTimer = window.setInterval(refreshDashboard, seconds * 1000);
+        }
+    }
+
     $('#login-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         $('#login-error').textContent = '';
@@ -234,7 +518,7 @@
             });
             state.csrf = result.csrf;
             loginForm.reset();
-            showAuthenticated(true, form.get('username'));
+            showAuthenticated(true, result.adviser || form.get('username'), result.role || 'admin');
         } catch (error) {
             $('#login-error').textContent = error.message;
         }
@@ -337,5 +621,4 @@
     }));
 
     init();
-    window.setInterval(refreshDashboard, 3000);
 })();

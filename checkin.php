@@ -3,15 +3,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#10251f">
+    <meta name="theme-color" content="#09090b">
     <title>Student Check-in — QRCAMv2</title>
+    <link rel="icon" type="image/png" href="assets/logo.png">
     <link rel="stylesheet" href="styles.css">
     <script defer src="assets/html5-qrcode.min.js"></script>
     <script defer src="checkin.js"></script>
 </head>
 <body class="checkin-page">
     <main class="checkin-wrap">
-        <a class="brand checkin-brand" href="index.php"><span class="brand-mark small">Q</span><span>QRCAM<span class="brand-light">v2</span></span></a>
+        <a class="brand checkin-brand" href="index.php"><span class="brand-mark small"><img class="brand-logo-icon theme-logo-dark" src="assets/logo-white.png" alt="QRCAM" width="22" height="22"><img class="brand-logo-icon theme-logo-light" src="assets/logo.png" alt="QRCAM" width="22" height="22"></span><span>QRCAM<span class="brand-light">v2</span></span></a>
         <section class="checkin-card">
             <p class="eyebrow">STUDENT ATTENDANCE</p>
             <h1>Check in to class</h1>

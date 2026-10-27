@@ -55,6 +55,24 @@ function require_adviser(): string
     return (string)$_SESSION['adviser'];
 }
 
+function require_admin(): void
+{
+    if (($_SESSION['role'] ?? 'admin') !== 'admin') {
+        json_response(['error' => 'Administrator access is required.'], 403);
+    }
+}
+
+function normalize_username(string $username): string
+{
+    return strtolower(trim($username));
+}
+
+function valid_account_details(string $username, string $fullName): bool
+{
+    return preg_match('/^[a-z0-9][a-z0-9._@+-]{2,119}$/', $username) === 1 &&
+        $fullName !== '' && mb_strlen($fullName) <= 160;
+}
+
 function valid_date(string $value): bool
 {
     $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
@@ -80,6 +98,7 @@ try {
         json_response([
             'authenticated' => !empty($_SESSION['adviser']),
             'adviser' => $_SESSION['adviser'] ?? null,
+            'role' => $_SESSION['role'] ?? 'admin',
             'csrf' => $_SESSION['csrf'],
         ]);
     }
@@ -89,17 +108,43 @@ try {
         $body = request_body();
         $username = qrcam_config('ADMIN_USERNAME');
         $hash = qrcam_config('ADMIN_PASSWORD_HASH');
+        $providedUsername = normalize_username((string)($body['username'] ?? ''));
+        if ($username !== '' && $hash !== '' &&
+            hash_equals(normalize_username($username), $providedUsername) &&
+            password_verify((string)($body['password'] ?? ''), $hash)) {
+            session_regenerate_id(true);
+            $_SESSION['adviser'] = $username;
+            $_SESSION['role'] = 'admin';
+            unset($_SESSION['teacher_account_id']);
+            $_SESSION['csrf'] = bin2hex(random_bytes(32));
+            json_response([
+                'ok' => true,
+                'adviser' => $username,
+                'role' => 'admin',
+                'csrf' => $_SESSION['csrf'],
+            ]);
+        }
+
         if ($username === '' || $hash === '') {
             json_response(['error' => 'Adviser login is not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD_HASH in .env.'], 503);
         }
-        if (!hash_equals($username, (string)($body['username'] ?? '')) ||
-            !password_verify((string)($body['password'] ?? ''), $hash)) {
+        $teacher = qrcam_store()->findOne('teacher_accounts', ['username' => $providedUsername]);
+        if ($teacher === null || empty($teacher['is_active']) ||
+            !password_verify((string)($body['password'] ?? ''), (string)$teacher['password_hash'])) {
             json_response(['error' => 'Invalid username or password.'], 401);
         }
         session_regenerate_id(true);
-        $_SESSION['adviser'] = $username;
+        $_SESSION['adviser'] = (string)$teacher['full_name'];
+        $_SESSION['role'] = 'teacher';
+        $_SESSION['teacher_account_id'] = (string)$teacher['id'];
         $_SESSION['csrf'] = bin2hex(random_bytes(32));
-        json_response(['ok' => true, 'csrf' => $_SESSION['csrf']]);
+        json_response([
+            'ok' => true,
+            'adviser' => $_SESSION['adviser'],
+            'role' => 'teacher',
+            'accountId' => $_SESSION['teacher_account_id'],
+            'csrf' => $_SESSION['csrf'],
+        ]);
     }
 
     if ($action === 'logout' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -155,6 +200,133 @@ try {
 
     $actor = require_adviser();
     $store = qrcam_store();
+    if (($_SESSION['role'] ?? 'admin') === 'teacher') {
+        $account = $store->findOne('teacher_accounts', ['id' => (string)($_SESSION['teacher_account_id'] ?? '')]);
+        if ($account === null || empty($account['is_active'])) {
+            session_unset();
+            json_response(['error' => 'This teacher account is no longer active. Sign in with an active account.'], 401);
+        }
+        $actor = (string)$account['full_name'];
+        $_SESSION['adviser'] = $actor;
+    }
+
+    if ($action === 'my_account' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        if (($_SESSION['role'] ?? 'admin') !== 'teacher') {
+            json_response(['error' => 'Only teacher accounts have editable profile details here.'], 403);
+        }
+        $account = $store->findOne('teacher_accounts', ['id' => (string)$_SESSION['teacher_account_id']]);
+        json_response(['account' => [
+            'full_name' => $account['full_name'],
+            'username' => $account['username'],
+        ]]);
+    }
+
+    if ($action === 'teacher_accounts' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        require_admin();
+        $accounts = $store->findAll('teacher_accounts', [], 'full_name');
+        $accounts = array_map(static fn(array $account): array => [
+            'id' => $account['id'],
+            'username' => $account['username'],
+            'full_name' => $account['full_name'],
+            'is_active' => (bool)$account['is_active'],
+        ], $accounts);
+        json_response(['accounts' => $accounts]);
+    }
+
+    if ($action === 'create_teacher' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_csrf();
+        require_admin();
+        $body = request_body();
+        $username = normalize_username((string)($body['username'] ?? ''));
+        $fullName = trim((string)($body['full_name'] ?? ''));
+        $password = (string)($body['password'] ?? '');
+        if (!valid_account_details($username, $fullName) || strlen($password) < 12 || strlen($password) > 1024) {
+            json_response(['error' => 'Provide a valid username, full name (up to 160 characters), and password of at least 12 characters.'], 400);
+        }
+        if (strcasecmp($username, qrcam_config('ADMIN_USERNAME')) === 0 ||
+            $store->findOne('teacher_accounts', ['username' => $username]) !== null) {
+            json_response(['error' => 'That username is already in use.'], 409);
+        }
+        $timestamp = getenv('DB_DRIVER') === 'supabase' ? date(DATE_ATOM) : date('Y-m-d H:i:s');
+        $account = $store->insert('teacher_accounts', [
+            'id' => new_id(),
+            'username' => $username,
+            'full_name' => $fullName,
+            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            'is_active' => true,
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
+        ]);
+        json_response(['ok' => true, 'id' => $account['id'] ?? null]);
+    }
+
+    if ($action === 'update_teacher' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_csrf();
+        require_admin();
+        $body = request_body();
+        $id = (string)($body['id'] ?? '');
+        $username = normalize_username((string)($body['username'] ?? ''));
+        $fullName = trim((string)($body['full_name'] ?? ''));
+        $password = (string)($body['password'] ?? '');
+        $active = $body['is_active'] ?? null;
+        $current = $store->findOne('teacher_accounts', ['id' => $id]);
+        if ($current === null || !valid_account_details($username, $fullName) ||
+            !is_bool($active) || ($password !== '' && (strlen($password) < 12 || strlen($password) > 1024))) {
+            json_response(['error' => 'Provide a valid teacher account, username, full name, status, and optional password of at least 12 characters.'], 400);
+        }
+        if (strcasecmp($username, qrcam_config('ADMIN_USERNAME')) === 0) {
+            json_response(['error' => 'That username is reserved for the administrator.'], 409);
+        }
+        $duplicate = $store->findOne('teacher_accounts', ['username' => $username]);
+        if ($duplicate !== null && (string)$duplicate['id'] !== $id) {
+            json_response(['error' => 'That username is already in use.'], 409);
+        }
+        $changes = [
+            'username' => $username,
+            'full_name' => $fullName,
+            'is_active' => $active,
+            'updated_at' => getenv('DB_DRIVER') === 'supabase' ? date(DATE_ATOM) : date('Y-m-d H:i:s'),
+        ];
+        if ($password !== '') {
+            $changes['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+        }
+        $store->update('teacher_accounts', ['id' => $id], $changes);
+        json_response(['ok' => true]);
+    }
+
+    if ($action === 'update_my_account' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_csrf();
+        if (($_SESSION['role'] ?? 'admin') !== 'teacher') {
+            json_response(['error' => 'Only teacher accounts can update profile details here.'], 403);
+        }
+        $body = request_body();
+        $id = (string)($_SESSION['teacher_account_id'] ?? '');
+        $account = $store->findOne('teacher_accounts', ['id' => $id]);
+        $username = normalize_username((string)($body['username'] ?? ''));
+        $fullName = trim((string)($body['full_name'] ?? ''));
+        $currentPassword = (string)($body['current_password'] ?? '');
+        $newPassword = (string)($body['new_password'] ?? '');
+        if ($account === null || !valid_account_details($username, $fullName) ||
+            !password_verify($currentPassword, (string)$account['password_hash']) ||
+            ($newPassword !== '' && (strlen($newPassword) < 12 || strlen($newPassword) > 1024))) {
+            json_response(['error' => 'Check your current password, username, full name, and new password (minimum 12 characters).'], 400);
+        }
+        $duplicate = $store->findOne('teacher_accounts', ['username' => $username]);
+        if ($duplicate !== null && (string)$duplicate['id'] !== $id) {
+            json_response(['error' => 'That username is already in use.'], 409);
+        }
+        $changes = [
+            'username' => $username,
+            'full_name' => $fullName,
+            'updated_at' => getenv('DB_DRIVER') === 'supabase' ? date(DATE_ATOM) : date('Y-m-d H:i:s'),
+        ];
+        if ($newPassword !== '') {
+            $changes['password_hash'] = password_hash($newPassword, PASSWORD_DEFAULT);
+        }
+        $store->update('teacher_accounts', ['id' => $id], $changes);
+        $_SESSION['adviser'] = $fullName;
+        json_response(['ok' => true, 'adviser' => $fullName]);
+    }
 
     if ($action === 'dashboard' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         $today = date('Y-m-d');
@@ -213,12 +385,17 @@ try {
         $studentNoCol = array_search('student_no', $header, true);
         $fullNameCol = array_search('full_name', $header, true);
         $sectionCol = array_search('class_section', $header, true);
+        $genderCol = array_search('gender', $header, true);
+        if ($genderCol === false) {
+            $genderCol = array_search('sex', $header, true);
+        }
         if ($studentNoCol === false || $fullNameCol === false) {
             fclose($handle);
             json_response(['error' => 'CSV needs student_no and full_name columns.'], 400);
         }
         $created = 0;
         $skipped = 0;
+        $genderUpdated = 0;
         $errors = [];
         $line = 1;
         while (($row = fgetcsv($handle)) !== false) {
@@ -233,6 +410,12 @@ try {
             $studentNo = trim((string)($row[$studentNoCol] ?? ''));
             $fullName = trim((string)($row[$fullNameCol] ?? ''));
             $section = $sectionCol === false ? '' : trim((string)($row[$sectionCol] ?? ''));
+            $genderValue = $genderCol === false ? '' : strtolower(trim((string)($row[$genderCol] ?? '')));
+            $gender = match ($genderValue) {
+                'm', 'male', 'man' => 'male',
+                'f', 'female', 'woman' => 'female',
+                default => 'unknown',
+            };
             if ($studentNo === '' || $fullName === '') {
                 $errors[] = "Row $line: student_no and full_name are required.";
                 continue;
@@ -241,7 +424,17 @@ try {
                 $errors[] = "Row $line: one or more values exceed the allowed length.";
                 continue;
             }
-            if ($store->findOne('students', ['student_no' => $studentNo]) !== null) {
+            $existingStudent = $store->findOne('students', ['student_no' => $studentNo]);
+            if ($existingStudent !== null) {
+                try {
+                    if ($gender !== 'unknown' && ($existingStudent['gender'] ?? 'unknown') !== $gender) {
+                        $store->update('students', ['id' => $existingStudent['id']], ['gender' => $gender]);
+                        $genderUpdated++;
+                    }
+                } catch (Throwable $error) {
+                    $errors[] = "Row $line: " . $error->getMessage();
+                    continue;
+                }
                 $skipped++;
                 continue;
             }
@@ -251,6 +444,7 @@ try {
                     'student_no' => $studentNo,
                     'full_name' => $fullName,
                     'class_section' => $section,
+                    'gender' => $gender,
                     'qr_token' => bin2hex(random_bytes(32)),
                     'created_at' => getenv('DB_DRIVER') === 'supabase' ? date(DATE_ATOM) : date('Y-m-d H:i:s'),
                 ]);
@@ -260,7 +454,7 @@ try {
             }
         }
         fclose($handle);
-        json_response(['ok' => true, 'created' => $created, 'skipped' => $skipped, 'errors' => $errors]);
+        json_response(['ok' => true, 'created' => $created, 'skipped' => $skipped, 'genderUpdated' => $genderUpdated, 'errors' => $errors]);
     }
 
     if ($action === 'set_attendance' && $_SERVER['REQUEST_METHOD'] === 'POST') {
